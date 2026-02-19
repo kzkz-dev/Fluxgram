@@ -27,14 +27,15 @@
         .chat-area { flex: 1; display: flex; flex-direction: column; background: url('https://web.telegram.org/a/chat-bg-pattern-dark.png'), var(--bg-base); position: relative; }
         
         /* --- AUTH SCREEN --- */
-        #auth-screen { position: absolute; inset: 0; background: var(--bg-base); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        #auth-screen { position: absolute; inset: 0; background: var(--bg-base); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
         .auth-box { background: var(--bg-surface); padding: 40px; border-radius: 16px; width: 100%; max-width: 400px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         .auth-logo { font-size: 3rem; margin-bottom: 20px; font-family: 'Outfit'; color: var(--text-main); }
         .auth-logo i { color: var(--primary); }
         .auth-input { width: 100%; background: var(--bg-base); border: 1px solid var(--divider); padding: 15px; border-radius: 8px; color: white; margin-bottom: 15px; font-size: 1rem; outline: none; }
         .auth-input:focus { border-color: var(--accent); }
-        .auth-btn { width: 100%; padding: 15px; background: var(--primary); border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; font-size: 1rem; }
-        #recaptcha-container { margin-bottom: 15px; }
+        .auth-btn { width: 100%; padding: 15px; background: var(--primary); border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; font-size: 1rem; transition: 0.2s; }
+        .auth-btn:active { transform: scale(0.97); }
+        #recaptcha-container { display: flex; justify-content: center; margin-bottom: 15px; min-height: 78px; }
 
         /* --- SIDEBAR COMPONENTS --- */
         .sidebar-header { padding: 10px 15px; display: flex; gap: 10px; align-items: center; }
@@ -46,7 +47,7 @@
         .chat-item { display: flex; align-items: center; padding: 10px 15px; cursor: pointer; transition: 0.2s; }
         .chat-item:hover { background: var(--bg-hover); }
         .chat-item.active { background: var(--msg-tx); }
-        .avatar { width: 50px; height: 50px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2rem; margin-right: 15px; object-fit: cover; }
+        .avatar { width: 50px; height: 50px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2rem; margin-right: 15px; object-fit: cover; text-transform: uppercase; }
         .chat-info { flex: 1; overflow: hidden; border-bottom: 1px solid var(--divider); padding-bottom: 10px; }
         .chat-item:last-child .chat-info { border-bottom: none; }
         .chat-name-row { display: flex; justify-content: space-between; margin-bottom: 3px; }
@@ -56,7 +57,7 @@
         .fab { position: absolute; bottom: 20px; right: 20px; width: 56px; height: 56px; background: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: var(--bg-base); cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
 
         /* --- CHAT AREA --- */
-        .chat-header { height: 60px; background: var(--bg-surface); display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid var(--divider); }
+        .chat-header { height: 60px; background: var(--bg-surface); display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid var(--divider); z-index: 10; }
         .chat-header-info { display: flex; align-items: center; gap: 15px; cursor: pointer; }
         .status-text { font-size: 0.8rem; color: var(--accent); }
         .message-container { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
@@ -69,7 +70,7 @@
         .msg-time { font-size: 0.7rem; color: rgba(255,255,255,0.6); float: right; margin: 5px 0 0 10px; }
         .msg-media { max-width: 100%; border-radius: 8px; margin-bottom: 5px; cursor: pointer; }
         
-        .input-area { background: var(--bg-surface); padding: 10px 15px; display: flex; align-items: flex-end; gap: 10px; }
+        .input-area { background: var(--bg-surface); padding: 10px 15px; display: flex; align-items: flex-end; gap: 10px; z-index: 20; }
         .input-wrapper { flex: 1; background: var(--bg-base); border-radius: 20px; padding: 10px 15px; display: flex; align-items: center; }
         .msg-input { width: 100%; background: transparent; border: none; color: white; outline: none; resize: none; max-height: 150px; font-size: 1rem; }
         .send-btn { width: 45px; height: 45px; border-radius: 50%; background: var(--bg-base); display: flex; align-items: center; justify-content: center; border: none; color: var(--text-muted); cursor: pointer; }
@@ -107,15 +108,17 @@
             <div class="auth-logo"><i class="fas fa-bolt"></i> <span>Flux<b>gram</b></span></div>
             <h2 style="margin-bottom: 20px; font-weight: 500;">Sign In</h2>
             <div id="recaptcha-container"></div>
-            <input type="tel" id="authPhone" class="auth-input" placeholder="+1 234 567 8900">
+            <input type="tel" id="authPhone" class="auth-input" placeholder="+8801XXXXXXXXX">
             <button class="auth-btn" onclick="sendOTP()">Send Code</button>
         </div>
+        
         <div class="auth-box hidden" id="step-otp">
             <div class="auth-logo"><i class="fas fa-bolt"></i></div>
             <h2 style="margin-bottom: 20px; font-weight: 500;">Enter Code</h2>
             <input type="number" id="authCode" class="auth-input" placeholder="6-digit code">
             <button class="auth-btn" onclick="verifyOTP()">Verify</button>
         </div>
+        
         <div class="auth-box hidden" id="step-profile">
             <h2 style="margin-bottom: 20px; font-weight: 500;">Setup Profile</h2>
             <input type="text" id="profileName" class="auth-input" placeholder="Full Name">
@@ -129,7 +132,7 @@
             <button class="icon-btn" onclick="openModal('settings-modal')"><i class="fas fa-bars"></i></button>
             <div class="search-box">
                 <i class="fas fa-search"></i>
-                <input type="text" id="searchInput" placeholder="Search users or chats..." oninput="searchUsers()">
+                <input type="text" id="searchInput" placeholder="Search users or chats..." oninput="performGlobalSearch()">
             </div>
         </div>
         <div class="chat-list" id="chatList"></div>
@@ -145,7 +148,7 @@
             <div class="chat-header">
                 <div class="chat-header-info" onclick="openModal('profile-modal')">
                     <i class="fas fa-arrow-left mobile-back" onclick="closeChat(event)"></i>
-                    <img id="chatAvatar" class="avatar" src="" alt="" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\'><rect width=\'100%\' height=\'100%\' fill=\'%23ff0050\'/></svg>'">
+                    <div id="chatAvatar" class="avatar" style="width:40px; height:40px; font-size:1rem;"></div>
                     <div>
                         <div id="chatName" style="font-weight: 500; font-size: 1.1rem;">Name</div>
                         <div id="chatStatus" class="status-text">online</div>
@@ -176,7 +179,7 @@
         <video id="localVideo" class="call-local-video" autoplay playsinline muted></video>
         <div class="call-ui">
             <div style="text-align:center;">
-                <img id="callAvatar" class="avatar" style="width:100px; height:100px; margin:0 auto 15px;" src="">
+                <div id="callAvatar" class="avatar" style="width:100px; height:100px; margin:0 auto 15px; font-size: 3rem;"></div>
                 <h2 id="callName" style="font-size:2rem; font-weight:500;">Name</h2>
                 <p id="callStatus" style="color:var(--text-muted); margin-top:5px;">Calling...</p>
             </div>
@@ -195,7 +198,7 @@
     <div class="modal-overlay hidden" id="new-chat-modal" onclick="closeModalOnOutsideClick(event, 'new-chat-modal')">
         <div class="modal">
             <div class="modal-header"><span>Global Search</span> <i class="fas fa-times icon-btn" onclick="closeModal('new-chat-modal')"></i></div>
-            <input type="text" id="globalSearch" class="auth-input" placeholder="Search users by name or phone..." oninput="performGlobalSearch()">
+            <input type="text" id="globalSearch" class="auth-input" placeholder="Search users by phone (+880...)" oninput="performGlobalSearch()">
             <div id="globalSearchResults" style="max-height: 300px; overflow-y:auto; margin-top:10px;"></div>
         </div>
     </div>
@@ -204,7 +207,7 @@
         <div class="modal">
             <div class="modal-header"><span>Settings</span> <i class="fas fa-times icon-btn" onclick="closeModal('settings-modal')"></i></div>
             <div style="text-align:center; margin-bottom:20px;">
-                <img id="myAvatar" class="avatar" style="width:80px;height:80px;margin:0 auto 10px;" src="">
+                <div id="myAvatar" class="avatar" style="width:80px;height:80px;margin:0 auto 10px; font-size: 2.5rem;"></div>
                 <h3 id="myName">Name</h3>
                 <p id="myPhone" style="color:var(--text-muted); font-size:0.9rem;">Phone</p>
             </div>
@@ -218,9 +221,10 @@
 </div>
 
 <script type="module">
+    // --- Firebase Initialization ---
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getAuth, RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged, updateProfile as updateAuthProfile, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { getFirestore, collection, doc, setDoc, getDoc, getDocs, updateDoc, onSnapshot, query, where, orderBy, serverTimestamp, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getAuth, RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc, getDocs, collection, addDoc, updateDoc, onSnapshot, query, where, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
     const firebaseConfig = {
@@ -237,7 +241,6 @@
     const db = getFirestore(app);
     const storage = getStorage(app);
 
-    // Globals
     let currentUser = null;
     let confirmationResult = null;
     let activeChatId = null;
@@ -249,56 +252,84 @@
     let localStream = null;
     let remoteStream = null;
     let peerConnection = null;
-    let callUnsub = null;
     const servers = { iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }] };
 
-    // --- AUTHENTICATION ---
+    // --- reCAPTCHA & Auth Flow ---
     window.onload = () => {
-        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { 'size': 'invisible' });
+        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+            size: 'normal',
+            callback: () => console.log("reCAPTCHA solved")
+        });
+
         onAuthStateChanged(auth, async (user) => {
-            if (user) {
+            if(user){
                 currentUser = user;
                 const userDoc = await getDoc(doc(db, "users", user.uid));
-                if (!userDoc.exists() || !userDoc.data().name) {
-                    document.getElementById('step-phone').classList.add('hidden');
-                    document.getElementById('step-otp').classList.add('hidden');
-                    document.getElementById('step-profile').classList.remove('hidden');
+                if(!userDoc.exists() || !userDoc.data().name){
+                    showStep('profile'); 
                 } else {
-                    document.getElementById('auth-screen').classList.add('hidden');
+                    hideAuthScreen();
                     initApp(userDoc.data());
                 }
             } else {
-                document.getElementById('auth-screen').classList.remove('hidden');
-                document.getElementById('step-phone').classList.remove('hidden');
-                document.getElementById('step-otp').classList.add('hidden');
-                document.getElementById('step-profile').classList.add('hidden');
+                showStep('phone');
             }
         });
     };
 
+    function showStep(step){
+        document.getElementById('step-phone').classList.toggle('hidden', step!=='phone');
+        document.getElementById('step-otp').classList.toggle('hidden', step!=='otp');
+        document.getElementById('step-profile').classList.toggle('hidden', step!=='profile');
+    }
+    function hideAuthScreen(){ document.getElementById('auth-screen').classList.add('hidden'); }
+
     window.sendOTP = () => {
         const phone = document.getElementById('authPhone').value.trim();
+        if(!phone) return alert("Enter phone number!");
+
+        window.recaptchaVerifier.render();
         signInWithPhoneNumber(auth, phone, window.recaptchaVerifier)
-            .then((result) => {
+            .then(result => {
                 confirmationResult = result;
-                document.getElementById('step-phone').classList.add('hidden');
-                document.getElementById('step-otp').classList.remove('hidden');
-            }).catch(console.error);
+                showStep('otp');
+            })
+            .catch(err => alert("Error sending code: "+err.message));
     };
 
     window.verifyOTP = () => {
         const code = document.getElementById('authCode').value.trim();
-        confirmationResult.confirm(code).catch(console.error);
+        if(!code) return alert("Enter OTP!");
+        
+        confirmationResult.confirm(code)
+            .then(async (result) => {
+                currentUser = result.user;
+                const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+                if(!userDoc.exists() || !userDoc.data().name){
+                    showStep('profile');
+                } else {
+                    hideAuthScreen();
+                    initApp(userDoc.data());
+                }
+            })
+            .catch(err => alert("Invalid OTP!"));
     };
 
     window.saveProfile = async () => {
         const name = document.getElementById('profileName').value.trim();
         const bio = document.getElementById('profileBio').value.trim();
-        if(!name) return;
+        if(!name) return alert("Enter your name!");
+
         await setDoc(doc(db, "users", currentUser.uid), {
-            uid: currentUser.uid, phone: currentUser.phoneNumber, name, bio, isOnline: true, lastSeen: serverTimestamp()
+            uid: currentUser.uid,
+            phone: currentUser.phoneNumber,
+            name,
+            bio,
+            isOnline: true,
+            lastSeen: serverTimestamp()
         });
-        document.getElementById('auth-screen').classList.add('hidden');
+
+        hideAuthScreen();
         initApp({name, phone: currentUser.phoneNumber, bio});
     };
 
@@ -307,14 +338,24 @@
         signOut(auth);
     };
 
-    // --- MAIN APP INIT ---
-    function initApp(userData) {
+    window.updateSettings = async () => {
+        const name = document.getElementById('editName').value.trim();
+        const bio = document.getElementById('editBio').value.trim();
+        if(!name) return;
+        await setDoc(doc(db, "users", currentUser.uid), { name, bio }, { merge: true });
+        document.getElementById('myName').innerText = name;
+        document.getElementById('myAvatar').innerText = name.charAt(0);
+        closeModal('settings-modal');
+    };
+
+    // --- Main App Logic ---
+    function initApp(userData){
         document.getElementById('myName').innerText = userData.name;
-        document.getElementById('myPhone').innerText = userData.phone;
+        document.getElementById('myPhone').innerText = userData.phone || currentUser.phoneNumber;
+        document.getElementById('myAvatar').innerText = userData.name.charAt(0);
         document.getElementById('editName').value = userData.name;
         document.getElementById('editBio').value = userData.bio || '';
         
-        // Presence System
         setDoc(doc(db, "users", currentUser.uid), { isOnline: true }, { merge: true });
         window.addEventListener('beforeunload', () => setDoc(doc(db, "users", currentUser.uid), { isOnline: false, lastSeen: serverTimestamp() }, { merge: true }));
 
@@ -322,7 +363,7 @@
         listenForCalls();
     }
 
-    // --- CHAT SYSTEM ---
+    // --- Chat System ---
     function loadChatList() {
         const q = query(collection(db, "chats"), where("members", "array-contains", currentUser.uid), orderBy("updatedAt", "desc"));
         unsubChats = onSnapshot(q, async (snapshot) => {
@@ -347,7 +388,7 @@
                             <div class="chat-name">${otherUser.name}</div>
                             <div class="chat-time">${timeStr}</div>
                         </div>
-                        <div class="chat-msg">${data.lastMessage || 'New Chat'}</div>
+                        <div class="chat-msg">${data.lastMessage || 'Start a conversation'}</div>
                     </div>
                 `;
                 list.appendChild(div);
@@ -359,9 +400,9 @@
         const term = document.getElementById('globalSearch').value.trim();
         const resDiv = document.getElementById('globalSearchResults');
         resDiv.innerHTML = '';
-        if(term.length < 3) return;
+        if(term.length < 5) return;
         
-        const q = query(collection(db, "users"), where("phone", "==", term)); // Exact phone search for simplicity in demo
+        const q = query(collection(db, "users"), where("phone", "==", term));
         const snaps = await getDocs(q);
         snaps.forEach(docSnap => {
             if(docSnap.id === currentUser.uid) return;
@@ -369,7 +410,7 @@
             resDiv.innerHTML += `
                 <div class="chat-item" onclick="startNewChat('${docSnap.id}', '${u.name}')">
                     <div class="avatar">${u.name.charAt(0)}</div>
-                    <div class="chat-info"><div class="chat-name">${u.name}</div><div class="chat-msg">${u.phone}</div></div>
+                    <div class="chat-info"><div class="chat-name-row"><div class="chat-name">${u.name}</div></div><div class="chat-msg">${u.phone}</div></div>
                 </div>
             `;
         });
@@ -396,15 +437,12 @@
         document.getElementById('chatAvatar').innerText = otherUser.name.charAt(0);
         if(window.innerWidth <= 768) document.getElementById('chatArea').classList.add('active');
         
-        // Listen to presence
         onSnapshot(doc(db, "users", otherUser.uid), (d) => {
-            if(d.exists()) {
-                const u = d.data();
-                document.getElementById('chatStatus').innerText = u.isOnline ? 'online' : 'last seen recently';
-            }
+            if(d.exists()) document.getElementById('chatStatus').innerText = d.data().isOnline ? 'online' : 'offline';
         });
 
         loadMessages();
+        loadChatList(); 
     }
 
     function loadMessages() {
@@ -422,12 +460,13 @@
                 let contentHTML = msg.text ? msg.text : '';
                 if(msg.type === 'image') contentHTML = `<img src="${msg.mediaUrl}" class="msg-media" onclick="window.open('${msg.mediaUrl}')">`;
                 if(msg.type === 'video') contentHTML = `<video src="${msg.mediaUrl}" class="msg-media" controls></video>`;
+                if(msg.type === 'file') contentHTML = `<a href="${msg.mediaUrl}" target="_blank" style="color:var(--accent);">📎 Download File</a>`;
 
                 msgCont.innerHTML += `
                     <div class="msg-row ${isMe ? 'msg-tx' : 'msg-rx'}">
                         <div class="msg-bubble">
                             ${contentHTML}
-                            <div class="msg-time">${time} ${isMe ? '<i class="fas fa-check"></i>' : ''}</div>
+                            <div class="msg-time">${time} ${isMe ? '<i class="fas fa-check-double"></i>' : ''}</div>
                         </div>
                     </div>
                 `;
@@ -452,7 +491,6 @@
         await updateDoc(doc(db, "chats", activeChatId), { lastMessage: text, updatedAt: serverTimestamp() });
     }
 
-    // Input Dynamics
     const msgInput = document.getElementById('msgInput');
     msgInput.addEventListener('input', function() {
         this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px';
@@ -463,12 +501,15 @@
     });
     msgInput.addEventListener('keypress', (e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
 
-    // --- MEDIA UPLOAD ---
+    // --- Media Upload ---
     window.handleFileUpload = async (e) => {
         const file = e.target.files[0];
         if(!file || !activeChatId) return;
         
-        const type = file.type.startsWith('video') ? 'video' : 'image';
+        let type = 'file';
+        if(file.type.startsWith('image')) type = 'image';
+        if(file.type.startsWith('video')) type = 'video';
+        
         const storageRef = ref(storage, `chats/${activeChatId}/${Date.now()}_${file.name}`);
         const uploadTask = uploadBytesResumable(storageRef, file);
         
@@ -477,15 +518,16 @@
             await addDoc(collection(db, `chats/${activeChatId}/messages`), {
                 text: '', mediaUrl: url, senderId: currentUser.uid, timestamp: serverTimestamp(), type
             });
-            await updateDoc(doc(db, "chats", activeChatId), { lastMessage: type === 'image' ? '📷 Photo' : '📹 Video', updatedAt: serverTimestamp() });
+            await updateDoc(doc(db, "chats", activeChatId), { lastMessage: type === 'image' ? '📷 Photo' : (type === 'video' ? '📹 Video' : '📎 File'), updatedAt: serverTimestamp() });
         });
     };
 
-    // --- WEBRTC CALLING LOGIC ---
+    // --- WebRTC Logic ---
     window.initiateCall = async (type) => {
         if(!activeChatId || !activeChatUser) return;
         document.getElementById('call-screen').classList.remove('hidden');
         document.getElementById('callName').innerText = activeChatUser.name;
+        document.getElementById('callAvatar').innerText = activeChatUser.name.charAt(0);
         document.getElementById('callStatus').innerText = "Calling...";
         document.getElementById('callControls').classList.remove('hidden');
         document.getElementById('incomingCallControls').classList.add('hidden');
@@ -501,7 +543,7 @@
 
         peerConnection.ontrack = (event) => {
             document.getElementById('remoteVideo').srcObject = event.streams[0];
-            document.getElementById('callStatus').innerText = "Connected 00:00";
+            document.getElementById('callStatus').innerText = "Connected";
         };
 
         const offerCandidates = collection(callDoc, 'offerCandidates');
@@ -517,7 +559,6 @@
             callerId: currentUser.uid, receiverId: activeChatUser.uid, type, status: 'ringing'
         });
 
-        // Listen for answer
         onSnapshot(callDoc, (snapshot) => {
             const data = snapshot.data();
             if (!peerConnection.currentRemoteDescription && data?.answer) {
@@ -545,9 +586,11 @@
                     const callData = change.doc.data();
                     window.currentCallDocId = change.doc.id;
                     const callerDoc = await getDoc(doc(db, "users", callData.callerId));
+                    const callerName = callerDoc.exists() ? callerDoc.data().name : "Unknown";
                     
                     document.getElementById('call-screen').classList.remove('hidden');
-                    document.getElementById('callName').innerText = callerDoc.exists() ? callerDoc.data().name : "Unknown";
+                    document.getElementById('callName').innerText = callerName;
+                    document.getElementById('callAvatar').innerText = callerName.charAt(0);
                     document.getElementById('callStatus').innerText = "Incoming Call...";
                     document.getElementById('callControls').classList.add('hidden');
                     document.getElementById('incomingCallControls').classList.remove('hidden');
@@ -573,7 +616,7 @@
 
         peerConnection.ontrack = (event) => {
             document.getElementById('remoteVideo').srcObject = event.streams[0];
-            document.getElementById('callStatus').innerText = "Connected 00:00";
+            document.getElementById('callStatus').innerText = "Connected";
         };
 
         const answerCandidates = collection(callDocRef, 'answerCandidates');
@@ -624,7 +667,7 @@
         }
     }
 
-    // --- UTILS ---
+    // --- Utils ---
     window.closeChat = (e) => { if(e) e.stopPropagation(); document.getElementById('chatArea').classList.remove('active'); activeChatId = null; }
     window.openModal = (id) => document.getElementById(id).classList.remove('hidden');
     window.closeModal = (id) => document.getElementById(id).classList.add('hidden');
