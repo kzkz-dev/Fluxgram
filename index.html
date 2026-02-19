@@ -11,9 +11,9 @@
     <style>
         :root {
             --bg-base: #0e1621; --bg-surface: #17212b; --bg-hover: #202b36;
-            --primary: #ff0050; --accent: #00f3ff; --text-main: #ffffff;
+            --primary: #3390ec; /* Telegram Blue */ --accent: #00f3ff; --text-main: #ffffff;
             --text-muted: #7f91a4; --divider: #101921; --msg-rx: #182533;
-            --msg-tx: #ff0050; --transition: 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+            --msg-tx: #2b5278; --transition: 0.3s cubic-bezier(0.25, 1, 0.5, 1);
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -25,14 +25,15 @@
         .base-layer { position: relative; z-index: 10; width: 100%; height: 100%; display: flex; overflow: hidden; }
 
         /* --- AUTH SCREEN --- */
-        #auth-screen { position: absolute; inset: 0; background: radial-gradient(circle at top left, #15050a 0%, var(--bg-base) 100%); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; transition: 0.5s; }
-        .auth-card { background: var(--bg-surface); padding: 40px; border-radius: 24px; width: 100%; max-width: 400px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); border: 1px solid var(--divider); }
-        .auth-logo { font-size: 4rem; margin-bottom: 20px; font-family: 'Outfit'; text-align: center; }
-        .auth-logo i { color: var(--primary); text-shadow: 0 0 20px var(--primary); }
-        .input-group { margin-bottom: 20px; }
-        .auth-input { width: 100%; background: var(--bg-base); border: 1px solid var(--divider); padding: 18px; border-radius: 12px; color: white; font-size: 1.1rem; outline: none; transition: 0.3s; }
-        .auth-input:focus { border-color: var(--accent); }
-        .auth-btn { width: 100%; padding: 18px; background: linear-gradient(135deg, var(--primary), #cc0040); border: none; border-radius: 12px; color: white; font-size: 1.2rem; font-weight: 700; cursor: pointer; box-shadow: 0 10px 20px rgba(255,0,80,0.3); }
+        #auth-screen { position: absolute; inset: 0; background: var(--bg-base); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; transition: 0.5s; }
+        .auth-card { background: var(--bg-surface); padding: 40px; border-radius: 12px; width: 100%; max-width: 400px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); text-align: center; }
+        .auth-logo { font-size: 3rem; margin-bottom: 10px; font-family: 'Outfit'; color: var(--primary); }
+        .input-group { margin-bottom: 20px; text-align: left; }
+        .input-group label { display: block; color: var(--text-muted); margin-bottom: 8px; font-size: 0.9rem; }
+        .auth-input { width: 100%; background: var(--bg-base); border: 1px solid var(--divider); padding: 15px; border-radius: 8px; color: white; font-size: 1.1rem; outline: none; transition: 0.3s; }
+        .auth-input:focus { border-color: var(--primary); }
+        .auth-btn { width: 100%; padding: 15px; background: var(--primary); border: none; border-radius: 8px; color: white; font-size: 1.1rem; font-weight: 500; cursor: pointer; transition: 0.2s; }
+        .auth-btn:hover { background: #2a7bcf; }
 
         /* --- SIDEBAR & CHAT LIST --- */
         .sidebar { width: 380px; height: 100%; background: var(--bg-surface); border-right: 1px solid var(--divider); display: flex; flex-direction: column; z-index: 20; flex-shrink: 0; transition: var(--transition); }
@@ -41,37 +42,38 @@
         .search-input { background: transparent; border: none; color: white; width: 100%; outline: none; margin-left: 10px; }
         
         .chat-list { flex: 1; overflow-y: auto; background: var(--bg-base); }
-        .chat-cell { display: flex; align-items: center; padding: 15px 20px; cursor: pointer; border-bottom: 1px solid var(--divider); transition: 0.2s; }
+        .chat-cell { display: flex; align-items: center; padding: 12px 15px; cursor: pointer; transition: 0.2s; }
         .chat-cell:hover { background: var(--bg-hover); }
-        .chat-cell.active { background: #2b5278; }
-        .c-avatar { width: 55px; height: 55px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; font-weight: 800; margin-right: 15px; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        .verified { color: #00f3ff; font-size: 0.85rem; margin-left: 5px; }
-
+        .chat-cell.active { background: var(--primary); }
+        .chat-cell.active .text-muted { color: #d1e4f9; }
+        .c-avatar { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: bold; margin-right: 15px; flex-shrink: 0; color: white; }
+        
         /* --- CHAT AREA --- */
-        .chat-area { flex: 1; display: flex; flex-direction: column; background: url('https://web.telegram.org/a/chat-bg-pattern-dark.png'), var(--bg-base); position: relative; height: 100%; }
-        .chat-top-bar { height: 65px; background: var(--bg-surface); display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid var(--divider); z-index: 10; }
-        .msg-scroll { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+        .chat-area { flex: 1; display: flex; flex-direction: column; background: url('https://web.telegram.org/a/chat-bg-pattern-dark.png'), var(--bg-base); background-size: cover; position: relative; height: 100%; }
+        .chat-top-bar { height: 60px; background: var(--bg-surface); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid var(--divider); z-index: 10; }
+        .msg-scroll { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
         
         .bubble-wrap { display: flex; flex-direction: column; max-width: 75%; }
         .wrap-rx { align-self: flex-start; }
         .wrap-tx { align-self: flex-end; }
-        .bubble { padding: 12px 16px; border-radius: 18px; font-size: 1rem; line-height: 1.5; position: relative; word-wrap: break-word; }
-        .bubble-rx { background: var(--msg-rx); border-bottom-left-radius: 4px; border: 1px solid var(--divider); }
-        .bubble-tx { background: linear-gradient(135deg, var(--primary), #99002e); border-bottom-right-radius: 4px; box-shadow: 0 4px 15px rgba(255,0,80,0.15); }
+        .bubble { padding: 8px 12px; border-radius: 12px; font-size: 1rem; line-height: 1.4; position: relative; word-wrap: break-word; display: flex; flex-direction: column;}
+        .bubble-rx { background: var(--msg-rx); border-bottom-left-radius: 4px; }
+        .bubble-tx { background: var(--msg-tx); border-bottom-right-radius: 4px; }
+        .msg-meta { font-size: 0.7rem; color: #7aa1c5; text-align: right; margin-top: 4px; display: flex; justify-content: flex-end; align-items: center; gap: 4px; }
 
-        /* --- CALL SCREEN (NEW) --- */
+        /* Input Area */
+        .input-bar { display: flex; align-items: flex-end; padding: 10px 20px; background: var(--bg-surface); gap: 15px; }
+        .msg-input-box { flex: 1; background: var(--bg-base); border-radius: 10px; display: flex; align-items: center; padding: 10px 15px; }
+        
+        /* --- CALL SCREEN --- */
         #call-view { position: absolute; inset: 0; background: linear-gradient(180deg, #1a1a2e 0%, #0a0a0c 100%); z-index: 500; display: none; flex-direction: column; align-items: center; justify-content: space-between; padding: 100px 20px; }
-        .call-avatar { width: 150px; height: 150px; border-radius: 50%; border: 5px solid var(--accent); box-shadow: 0 0 30px var(--accent); animation: pulse 2s infinite; }
+        .call-avatar { width: 150px; height: 150px; border-radius: 50%; border: 5px solid var(--primary); box-shadow: 0 0 30px var(--primary); animation: pulse 2s infinite; display: flex; align-items: center; justify-content: center; font-size: 4rem; color: white; }
         .call-name { font-size: 2rem; font-weight: 700; margin-top: 20px; }
-        .call-status { color: var(--accent); letter-spacing: 2px; }
+        .call-status { color: var(--primary); letter-spacing: 2px; }
         .call-actions { display: flex; gap: 40px; margin-bottom: 50px; }
-        .call-btn { width: 70px; height: 70px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; cursor: pointer; transition: 0.3s; }
+        .call-btn { width: 70px; height: 70px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; cursor: pointer; transition: 0.3s; color: white;}
         .btn-end { background: #ff3b30; }
         .btn-accept { background: #4cd964; }
-
-        /* --- SETTINGS & POLICY --- */
-        .doc-content { padding: 30px; line-height: 1.8; color: #ddd; overflow-y: auto; height: calc(100% - 60px); }
-        .doc-content h2 { color: var(--accent); margin: 25px 0 10px; }
 
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
 
@@ -86,24 +88,36 @@
 
     <div id="app-root">
         <div id="auth-screen">
-            <div class="auth-logo"><i class="fas fa-bolt"></i> <span>Flux<b>gram</b></span></div>
-            <div class="auth-card">
+            <div class="auth-card" id="phone-step">
+                <div class="auth-logo"><i class="fas fa-paper-plane"></i></div>
+                <h2 style="margin-bottom: 20px;">Sign in to Fluxgram</h2>
+                <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 0.9rem;">Please confirm your country code and enter your phone number.</p>
                 <div class="input-group">
-                    <input type="text" class="auth-input" id="authName" placeholder="Full Name">
-                </div>
-                <div class="input-group">
+                    <label>Phone Number</label>
                     <input type="tel" class="auth-input" id="authPhone" placeholder="+8801XXXXXXXXX">
                 </div>
-                <button class="auth-btn" onclick="executeLogin()">Access Secure Server</button>
+                <div id="recaptcha-container" style="margin-bottom: 15px;"></div>
+                <button class="auth-btn" onclick="sendOTP()" id="sendOtpBtn">NEXT</button>
+            </div>
+
+            <div class="auth-card" id="otp-step" style="display: none;">
+                <div class="auth-logo"><i class="fas fa-lock"></i></div>
+                <h2 style="margin-bottom: 20px;">+8801XXXXXXXXX</h2>
+                <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 0.9rem;">We've sent an SMS with an activation code to your phone.</p>
+                <div class="input-group">
+                    <label>Code</label>
+                    <input type="text" class="auth-input" id="authOTP" placeholder="Code">
+                </div>
+                <button class="auth-btn" onclick="verifyOTP()">VERIFY</button>
             </div>
         </div>
 
         <div class="base-layer">
             <div class="sidebar">
                 <div class="sb-header">
-                    <i class="fas fa-bars" onclick="toggleDrawer()" style="cursor:pointer; font-size:1.4rem;"></i>
+                    <i class="fas fa-bars" onclick="alert('Settings menu clicked')" style="cursor:pointer; font-size:1.4rem; color: var(--text-muted);"></i>
                     <div class="search-box">
-                        <i class="fas fa-search"></i>
+                        <i class="fas fa-search" style="color: var(--text-muted);"></i>
                         <input type="text" class="search-input" placeholder="Search">
                     </div>
                 </div>
@@ -114,74 +128,41 @@
             <div class="chat-area" id="chatArea">
                 <div id="activeChat" style="display:none; height:100%; flex-direction:column;">
                     <div class="chat-top-bar">
-                        <div style="display:flex; align-items:center; gap:15px; cursor:pointer;" onclick="navTo('view-profile')">
-                            <i class="fas fa-arrow-left" onclick="backToList(event)" style="margin-right:10px;"></i>
+                        <div style="display:flex; align-items:center; gap:15px;">
+                            <i class="fas fa-arrow-left" onclick="backToList(event)" style="margin-right:10px; cursor: pointer; display: none;" id="backBtn"></i>
                             <div id="activeAvatar" class="c-avatar" style="width:40px; height:40px; font-size:1rem;"></div>
                             <div>
-                                <div id="activeName" style="font-weight:600;">Name</div>
-                                <div style="font-size:0.8rem; color:var(--accent);">online</div>
+                                <div id="activeName" style="font-weight:500;">Name</div>
+                                <div style="font-size:0.8rem; color:var(--primary);">last seen recently</div>
                             </div>
                         </div>
                         <div style="display:flex; gap:20px; color:var(--text-muted);">
-                            <i class="fas fa-phone-alt" onclick="startCall()" style="cursor:pointer;"></i>
-                            <i class="fas fa-ellipsis-v"></i>
+                            <i class="fas fa-phone-alt" onclick="startCall()" style="cursor:pointer; font-size: 1.2rem;"></i>
+                            <i class="fas fa-ellipsis-v" style="cursor:pointer; font-size: 1.2rem;"></i>
                         </div>
                     </div>
                     <div class="msg-scroll" id="msgScroll"></div>
                     <div class="input-bar">
                         <i class="fas fa-paperclip" style="font-size:1.5rem; color:var(--text-muted); cursor:pointer;"></i>
-                        <div style="flex:1; background:var(--bg-base); border-radius:20px; padding:10px 15px;">
-                            <textarea id="msgInput" rows="1" placeholder="Message" style="width:100%; background:transparent; border:none; color:white; outline:none; font-size:1rem;"></textarea>
+                        <div class="msg-input-box">
+                            <input type="text" id="msgInput" placeholder="Write a message..." style="width:100%; background:transparent; border:none; color:white; outline:none; font-size:1rem;">
+                            <i class="far fa-smile" style="color:var(--text-muted); font-size: 1.2rem; cursor:pointer;"></i>
                         </div>
-                        <button onclick="sendMessage()" style="width:45px; height:45px; border-radius:50%; background:var(--primary); color:white; border:none; cursor:pointer;"><i class="fas fa-paper-plane"></i></button>
+                        <button onclick="sendMessage()" style="width:45px; height:45px; border-radius:50%; background:transparent; color:var(--primary); border:none; cursor:pointer; font-size: 1.5rem;">
+                            <i class="fas fa-microphone" id="sendIcon"></i>
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
 
         <div id="call-view">
-            <div class="call-avatar" id="callAvatar">K</div>
+            <div class="call-avatar" id="callAvatar" style="background: #e17076;">K</div>
             <h1 class="call-name" id="callName">KAWCHUR</h1>
-            <p class="call-status">FLUX SECURE CALL...</p>
+            <p class="call-status">Fluxgram Audio Call...</p>
             <div class="call-actions">
                 <div class="call-btn btn-end" onclick="endCall()"><i class="fas fa-phone-slash"></i></div>
-                <div class="call-btn btn-accept" onclick="alert('Connected via PeerJS (Simulation)')"><i class="fas fa-phone"></i></div>
-            </div>
-        </div>
-
-        <div class="view-layer" id="view-settings">
-            <div class="app-header">
-                <i class="fas fa-arrow-left btn-icon" onclick="navBack()"></i>
-                <div class="header-title">Settings</div>
-            </div>
-            <div class="doc-content">
-                <div style="text-align:center; padding-bottom:30px;">
-                    <div class="c-avatar" style="width:100px; height:100px; font-size:3rem; margin: 0 auto 15px; background:var(--primary)">U</div>
-                    <h2 id="setProfileName">User</h2>
-                    <p style="color:var(--accent)">@username</p>
-                </div>
-                <div style="background:var(--bg-surface); border-radius:12px; padding:10px;">
-                    <div style="padding:15px; border-bottom:1px solid var(--divider);" onclick="navTo('view-policy')">Privacy & Policy</div>
-                    <div style="padding:15px; border-bottom:1px solid var(--divider);">Notification Settings</div>
-                    <div style="padding:15px;">Data & Storage</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="view-layer" id="view-policy">
-            <div class="app-header">
-                <i class="fas fa-arrow-left btn-icon" onclick="navBack()"></i>
-                <div class="header-title">Privacy Policy</div>
-            </div>
-            <div class="doc-content">
-                <h1>Fluxgram Legal Agreement</h1>
-                <p>Fluxgram is an enterprise-grade messenger built by <b>KAWCHUR</b>. Your privacy is our absolute priority.</p>
-                <h2>1. Encryption Protocols</h2>
-                <p>We use Flux Matrix Protocols for end-to-end encryption. No one, including Fluxgram engineers, can read your private chats.</p>
-                <h2>2. Data Collection</h2>
-                <p>We do not collect personal identifiers for advertisement. Your phone number is strictly used for authentication via Google Firebase.</p>
-                <h2>3. Self-Destruct</h2>
-                <p>Account data is purged after 6 months of inactivity to ensure a clean digital footprint.</p>
+                <div class="call-btn btn-accept" onclick="alert('Connected via Fluxgram Call Protocol')"><i class="fas fa-phone"></i></div>
             </div>
         </div>
 
@@ -190,6 +171,8 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
         import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
+        // Firebase Auth Imports
+        import { getAuth, RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCsbZ1fqDivv8OyUiTcaEMcpZlJlM1TI6Y",
@@ -202,32 +185,89 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const auth = getAuth(app);
+        
+        let userPhone = "";
+        let confirmationResultObj = null;
 
         // --- GLOBAL STATE ---
-        let user = { uid: "user_" + Math.random().toString(36).substr(2, 9), name: "User" };
+        let user = null;
         let activeChatId = "ceo_kawchur";
-        const CEO = { name: "KAWCHUR (CEO)", phone: "+8801902397621", username: "@kawchur", avatar: "K", bg: "#ff0050" };
+        const CEO = { name: "KAWCHUR (CEO)", phone: "+8801902397621", username: "@kawchur", avatar: "K", bg: "#e17076" };
 
-        // --- AUTH & NAVIGATION ---
-        window.executeLogin = () => {
-            const name = document.getElementById('authName').value || "User";
-            user.name = name;
-            document.getElementById('setProfileName').innerText = name;
-            document.getElementById('auth-screen').style.opacity = '0';
-            setTimeout(() => { document.getElementById('auth-screen').style.display = 'none'; initApp(); }, 500);
+        // Check window size for mobile back button
+        if(window.innerWidth <= 768) { document.getElementById('backBtn').style.display = 'block'; }
+
+        // --- AUTHENTICATION LOGIC (TELEGRAM STYLE) ---
+        window.setupRecaptcha = () => {
+            if(!window.recaptchaVerifier) {
+                window.recaptchaVerifier = new RecaptchaVerifier('recaptcha-container', {
+                    'size': 'invisible', // Invisible verification like Telegram
+                    'callback': (response) => { }
+                }, auth);
+            }
         };
 
-        window.navTo = (id) => document.getElementById(id).classList.add('active');
-        window.navBack = () => document.querySelectorAll('.view-layer').forEach(v => v.classList.remove('active'));
+        window.sendOTP = () => {
+            const phone = document.getElementById('authPhone').value.trim();
+            if(!phone || phone.length < 10) { alert("Please enter a valid phone number with country code."); return; }
+            
+            document.getElementById('sendOtpBtn').innerText = "SENDING...";
+            setupRecaptcha();
+            const appVerifier = window.recaptchaVerifier;
 
+            signInWithPhoneNumber(auth, phone, appVerifier)
+            .then((confirmationResult) => {
+                confirmationResultObj = confirmationResult;
+                userPhone = phone;
+                document.getElementById('phone-step').style.display = 'none';
+                document.getElementById('otp-step').style.display = 'block';
+                document.querySelector('#otp-step h2').innerText = phone;
+            }).catch((error) => {
+                console.error(error);
+                alert("Error sending SMS. Ensure 'Phone Auth' is enabled in Firebase Console.");
+                document.getElementById('sendOtpBtn').innerText = "NEXT";
+            });
+        };
+
+        window.verifyOTP = () => {
+            const code = document.getElementById('authOTP').value.trim();
+            if(!code) return;
+            
+            confirmationResultObj.confirm(code).then((result) => {
+                user = result.user;
+                startGame(); // Start app after login
+            }).catch((error) => {
+                alert("Invalid or expired code.");
+            });
+        };
+
+        // Auto login check
+        onAuthStateChanged(auth, (currentUser) => {
+            if (currentUser) {
+                user = currentUser;
+                startGame();
+            }
+        });
+
+        function startGame() {
+            document.getElementById('auth-screen').style.opacity = '0';
+            setTimeout(() => { document.getElementById('auth-screen').style.display = 'none'; initApp(); }, 500);
+        }
+
+        // --- APP INITIALIZATION ---
         function initApp() {
             const list = document.getElementById('chatList');
             list.innerHTML = `
                 <div class="chat-cell active" onclick="openChat('ceo_kawchur')">
-                    <div class="c-avatar" style="background:var(--primary)">K</div>
+                    <div class="c-avatar" style="background:${CEO.bg}">${CEO.avatar}</div>
                     <div style="flex:1">
-                        <div style="font-weight:600">${CEO.name} <i class="fas fa-check-circle verified"></i></div>
-                        <div style="font-size:0.9rem; color:var(--text-muted)">CEO is online</div>
+                        <div style="font-weight:500; display:flex; justify-content:space-between;">
+                            ${CEO.name} <span style="color:var(--text-muted); font-size:0.8rem;">12:00</span>
+                        </div>
+                        <div style="font-size:0.9rem; color:#d1e4f9; display:flex; justify-content:space-between;">
+                            <span>Welcome to Fluxgram...</span>
+                        </div>
                     </div>
                 </div>
             `;
@@ -236,8 +276,8 @@
 
         window.openChat = (id) => {
             document.getElementById('activeChat').style.display = 'flex';
-            document.getElementById('activeName').innerHTML = `${CEO.name} <i class="fas fa-check-circle verified"></i>`;
-            document.getElementById('activeAvatar').innerText = "K";
+            document.getElementById('activeName').innerHTML = CEO.name;
+            document.getElementById('activeAvatar').innerText = CEO.avatar;
             document.getElementById('activeAvatar').style.background = CEO.bg;
             if(window.innerWidth <= 768) document.getElementById('chatArea').classList.add('active');
             loadMessages(id);
@@ -252,9 +292,15 @@
                 snapshot.forEach(doc => {
                     const d = doc.data();
                     const isMe = d.senderId === user.uid;
+                    // Format time
+                    const time = d.timestamp ? new Date(d.timestamp.toDate()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Sending...';
+                    
                     scroll.innerHTML += `
                         <div class="bubble-wrap ${isMe ? 'wrap-tx' : 'wrap-rx'}">
-                            <div class="bubble ${isMe ? 'bubble-tx' : 'bubble-rx'}">${d.text}</div>
+                            <div class="bubble ${isMe ? 'bubble-tx' : 'bubble-rx'}">
+                                ${d.text}
+                                <div class="msg-meta">${time} ${isMe ? '<i class="fas fa-check-double"></i>' : ''}</div>
+                            </div>
                         </div>
                     `;
                 });
@@ -262,29 +308,36 @@
             });
         }
 
+        // Dynamic Send/Mic Icon
+        const msgInput = document.getElementById('msgInput');
+        const sendIcon = document.getElementById('sendIcon');
+        msgInput.addEventListener('input', () => {
+            if(msgInput.value.trim().length > 0) {
+                sendIcon.className = 'fas fa-paper-plane';
+            } else {
+                sendIcon.className = 'fas fa-microphone';
+            }
+        });
+
         window.sendMessage = async () => {
-            const input = document.getElementById('msgInput');
-            if(!input.value.trim()) return;
+            if(!msgInput.value.trim()) { alert("Voice note feature coming soon!"); return; }
+            const text = msgInput.value;
+            msgInput.value = '';
+            sendIcon.className = 'fas fa-microphone'; // reset icon
+
             await addDoc(collection(db, "chats", activeChatId, "messages"), {
-                text: input.value, senderId: user.uid, timestamp: serverTimestamp()
+                text: text, senderId: user.uid, timestamp: serverTimestamp()
             });
-            input.value = '';
         };
 
         // --- CALL SYSTEM ---
-        window.startCall = () => {
-            document.getElementById('call-view').style.display = 'flex';
-        };
-        window.endCall = () => {
-            document.getElementById('call-view').style.display = 'none';
-        };
+        window.startCall = () => document.getElementById('call-view').style.display = 'flex';
+        window.endCall = () => document.getElementById('call-view').style.display = 'none';
 
         window.backToList = (e) => {
             e.stopPropagation();
             document.getElementById('chatArea').classList.remove('active');
         };
-        
-        window.toggleDrawer = () => navTo('view-settings');
     </script>
 </body>
 </html>
