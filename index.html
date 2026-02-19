@@ -3,182 +3,165 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Fluxgram | Ultimate Enterprise Messenger</title>
+    <title>Fluxgram | Fast, Secure, Powerful</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
-        /* Telegram Dark Theme Colors */
         :root {
-            --bg-base: #0e1621; 
-            --bg-surface: #17212b; 
-            --bg-hover: #202b36;
-            --primary: #5288c1; 
-            --accent: #2b5278; 
-            --text-main: #ffffff;
-            --text-muted: #7f91a4; 
-            --divider: #101921; 
-            --msg-rx: #182533;
-            --msg-tx: #2b5278; 
-            --transition: 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+            --tg-theme-bg: #0e1621;
+            --tg-theme-secondary-bg: #17212b;
+            --tg-theme-text: #ffffff;
+            --tg-theme-hint: #7f91a4;
+            --tg-theme-link: #6ab2f2;
+            --tg-theme-button: #5288c1;
+            --tg-msg-out: #2b5278;
+            --tg-msg-in: #182533;
+            --accent: #2481cc;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        html, body { width: 100vw; height: 100dvh; background: var(--bg-base); color: var(--text-main); font-family: 'Roboto', sans-serif; overflow: hidden; position: fixed; inset: 0; }
-        
-        #app-root { display: flex; width: 100%; height: 100%; position: relative; overflow: hidden; }
-        
-        /* --- AUTH SCREEN (TELEGRAM STYLE) --- */
-        #auth-screen { position: absolute; inset: 0; background: var(--bg-base); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; transition: 0.5s; }
-        .auth-card { background: var(--bg-surface); padding: 40px; border-radius: 12px; width: 100%; max-width: 400px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
-        .auth-logo i { font-size: 4rem; color: var(--primary); margin-bottom: 20px; }
-        .auth-card h2 { margin-bottom: 10px; font-weight: 500; }
-        .auth-card p { color: var(--text-muted); margin-bottom: 25px; font-size: 0.95rem; }
-        .input-group { margin-bottom: 20px; text-align: left; }
-        .auth-input { width: 100%; background: transparent; border: none; border-bottom: 2px solid var(--primary); padding: 10px 5px; color: white; font-size: 1.1rem; outline: none; transition: 0.3s; }
-        .auth-btn { width: 100%; padding: 15px; background: var(--primary); border: none; border-radius: 8px; color: white; font-size: 1.1rem; font-weight: 500; cursor: pointer; text-transform: uppercase; transition: 0.2s; }
-        .auth-btn:hover { background: #4376a3; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Roboto', sans-serif; }
+        body { background: var(--tg-theme-bg); color: var(--tg-theme-text); height: 100dvh; overflow: hidden; }
 
-        /* --- SIDEBAR & CHAT LIST --- */
-        .sidebar { width: 380px; height: 100%; background: var(--bg-surface); border-right: 1px solid var(--divider); display: flex; flex-direction: column; z-index: 20; flex-shrink: 0; }
-        .sb-header { padding: 10px 15px; display: flex; align-items: center; gap: 15px; }
-        .search-box { flex: 1; background: var(--bg-base); border-radius: 20px; display: flex; align-items: center; padding: 0 15px; height: 42px; border: 1px solid var(--divider); }
-        .search-input { background: transparent; border: none; color: white; width: 100%; outline: none; margin-left: 10px; }
+        /* --- AUTH SCREEN --- */
+        #auth-screen {
+            position: fixed; inset: 0; z-index: 9999; background: var(--tg-theme-bg);
+            display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+        }
+        .auth-logo { font-size: 80px; color: var(--accent); margin-bottom: 20px; }
+        .auth-title { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
+        .auth-desc { color: var(--tg-theme-hint); margin-bottom: 30px; padding: 0 40px; }
+        .google-btn {
+            background: white; color: #000; padding: 12px 24px; border-radius: 8px;
+            display: flex; align-items: center; gap: 10px; font-weight: 500; cursor: pointer; border: none;
+        }
+
+        /* --- LAYOUT --- */
+        #app-root { display: flex; height: 100%; width: 100%; }
         
+        /* Sidebar */
+        .sidebar { width: 30%; border-right: 1px solid #101921; background: var(--tg-theme-secondary-bg); display: flex; flex-direction: column; }
+        .sb-header { padding: 15px; display: flex; align-items: center; gap: 15px; }
+        .search-bar { flex: 1; background: #242f3d; border-radius: 20px; padding: 8px 15px; display: flex; align-items: center; }
+        .search-bar input { background: transparent; border: none; color: white; margin-left: 10px; outline: none; width: 100%; }
+
+        /* Chat List */
         .chat-list { flex: 1; overflow-y: auto; }
-        .chat-cell { display: flex; align-items: center; padding: 10px 15px; cursor: pointer; transition: 0.2s; }
-        .chat-cell:hover { background: var(--bg-hover); }
-        .chat-cell.active { background: var(--accent); }
-        .c-avatar { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: bold; margin-right: 15px; flex-shrink: 0; color: white; }
+        .chat-item { padding: 12px 15px; display: flex; align-items: center; gap: 12px; cursor: pointer; border-bottom: 1px solid #101921; }
+        .chat-item:hover { background: #202b36; }
+        .chat-item.active { background: var(--tg-theme-button); }
+        .avatar { width: 50px; height: 50px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2rem; }
+
+        /* Main Chat Area */
+        .main-chat { flex: 1; display: flex; flex-direction: column; background: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); background-blend-mode: overlay; background-color: #0e1621; }
+        .chat-header { height: 60px; background: var(--tg-theme-secondary-bg); display: flex; align-items: center; padding: 0 20px; justify-content: space-between; border-bottom: 1px solid #101921; }
         
-        /* --- CHAT AREA --- */
-        .chat-area { flex: 1; display: flex; flex-direction: column; background: url('https://web.telegram.org/a/chat-bg-pattern-dark.png') center/cover, var(--bg-base); position: relative; height: 100%; }
-        .chat-top-bar { height: 60px; background: var(--bg-surface); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid var(--divider); z-index: 10; cursor: pointer; }
-        .msg-scroll { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
-        
-        .bubble-wrap { display: flex; flex-direction: column; max-width: 70%; }
-        .wrap-rx { align-self: flex-start; }
-        .wrap-tx { align-self: flex-end; }
-        .bubble { padding: 8px 14px; border-radius: 12px; font-size: 0.95rem; line-height: 1.4; position: relative; word-wrap: break-word; }
-        .bubble-rx { background: var(--msg-rx); border-bottom-left-radius: 4px; }
-        .bubble-tx { background: var(--msg-tx); border-bottom-right-radius: 4px; }
-        .msg-time { font-size: 0.7rem; color: #7da570; float: right; margin: 5px 0 -5px 10px; }
-        .bubble-rx .msg-time { color: var(--text-muted); }
-        .chat-img { max-width: 100%; border-radius: 8px; margin-bottom: 5px; }
+        .messages-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 8px; }
+        .msg-bubble { max-width: 70%; padding: 8px 15px; border-radius: 12px; font-size: 0.95rem; position: relative; line-height: 1.4; }
+        .msg-in { align-self: flex-start; background: var(--tg-msg-in); border-bottom-left-radius: 2px; }
+        .msg-out { align-self: flex-end; background: var(--tg-msg-out); border-bottom-right-radius: 2px; }
 
-        .input-bar { background: var(--bg-surface); padding: 10px 20px; display: flex; align-items: flex-end; gap: 15px; }
-        .msg-input-wrap { flex: 1; background: var(--bg-base); border-radius: 20px; padding: 12px 15px; display: flex; align-items: center; }
-        #msgInput { width: 100%; background: transparent; border: none; color: white; outline: none; font-size: 1rem; resize: none; max-height: 100px; }
-        .action-btn { background: transparent; border: none; color: var(--text-muted); font-size: 1.4rem; cursor: pointer; transition: 0.2s; padding: 5px; }
-        .action-btn:hover { color: var(--primary); }
-        .send-btn { color: var(--primary); }
+        /* Input Area */
+        .input-area { background: var(--tg-theme-secondary-bg); padding: 10px 20px; display: flex; align-items: center; gap: 15px; }
+        .msg-input { flex: 1; background: transparent; border: none; color: white; outline: none; font-size: 1rem; }
 
-        /* --- CALL SCREEN (Kept Your Design) --- */
-        #call-view { position: absolute; inset: 0; background: linear-gradient(180deg, #1a1a2e 0%, #0a0a0c 100%); z-index: 500; display: none; flex-direction: column; align-items: center; justify-content: space-between; padding: 100px 20px; }
-        .call-avatar { width: 150px; height: 150px; border-radius: 50%; border: 5px solid #00f3ff; display:flex; align-items:center; justify-content:center; font-size:4rem; background:#ff0050; color:white; box-shadow: 0 0 30px #00f3ff; animation: pulse 2s infinite; }
-        .call-name { font-size: 2rem; font-weight: 700; margin-top: 20px; }
-        .call-actions { display: flex; gap: 40px; margin-bottom: 50px; }
-        .call-btn { width: 70px; height: 70px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; cursor: pointer; color:white; }
-        .btn-end { background: #ff3b30; }
-        .btn-accept { background: #4cd964; }
+        /* Call Overlay */
+        #call-screen { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 1000; display: none; flex-direction: column; align-items: center; justify-content: space-evenly; }
+        .call-user-img { width: 120px; height: 120px; border-radius: 50%; border: 3px solid var(--accent); }
 
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
-
+        /* Responsive */
         @media (max-width: 768px) {
-            .sidebar { width: 100%; position: absolute; }
-            .chat-area { position: absolute; width: 100%; z-index: 30; transform: translateX(100%); transition: var(--transition); }
-            .chat-area.active { transform: translateX(0); }
-            .back-btn { display: block !important; }
+            .sidebar { width: 100%; }
+            .main-chat { position: fixed; inset: 0; transform: translateX(100%); transition: 0.3s; z-index: 100; }
+            .main-chat.active { transform: translateX(0); }
         }
     </style>
 </head>
 <body>
 
+    <div id="auth-screen">
+        <div class="auth-logo"><i class="fas fa-paper-plane"></i></div>
+        <h1 class="auth-title">Fluxgram</h1>
+        <p class="auth-desc">The world's fastest messaging app. <br>Secure and Free.</p>
+        <button class="google-btn" onclick="loginWithGoogle()">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" width="20">
+            Sign in with Gmail
+        </button>
+    </div>
+
     <div id="app-root">
-        <div id="auth-screen">
-            <div class="auth-card" id="step-phone">
-                <div class="auth-logo"><i class="fas fa-paper-plane"></i></div>
-                <h2>Sign in to Fluxgram</h2>
-                <p>Please confirm your country code and enter your phone number.</p>
-                <div class="input-group">
-                    <input type="tel" class="auth-input" id="authPhone" placeholder="+880 1XXX XXXXXX" value="+880">
-                </div>
-                <button class="auth-btn" onclick="sendOTP()">Next</button>
-                <div id="recaptcha-container" style="margin-top:15px;"></div>
-            </div>
-
-            <div class="auth-card" id="step-otp" style="display: none;">
-                <div class="auth-logo"><i class="fas fa-lock"></i></div>
-                <h2>Enter Code</h2>
-                <p>We have sent an SMS with an activation code to your phone.</p>
-                <div class="input-group">
-                    <input type="text" class="auth-input" id="authOTP" placeholder="123456">
-                </div>
-                <button class="auth-btn" onclick="verifyOTP()">Verify</button>
-            </div>
-        </div>
-
         <div class="sidebar">
             <div class="sb-header">
-                <i class="fas fa-bars action-btn" style="font-size: 1.2rem;"></i>
-                <div class="search-box">
-                    <i class="fas fa-search" style="color: var(--text-muted)"></i>
-                    <input type="text" class="search-input" placeholder="Search">
+                <i class="fas fa-bars" style="font-size: 1.2rem; cursor: pointer;"></i>
+                <div class="search-bar">
+                    <i class="fas fa-search" style="color: var(--tg-theme-hint);"></i>
+                    <input type="text" placeholder="Search">
                 </div>
             </div>
-            <div class="chat-list" id="chatList">
+            <div class="chat-list">
+                <div class="chat-item active" onclick="openChat('ceo_kawchur')">
+                    <div class="avatar" style="background: #e67e22;">K</div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 500; display: flex; align-items: center; gap: 5px;">
+                            KAWCHUR <i class="fas fa-check-circle" style="color: #5288c1; font-size: 0.8rem;"></i>
+                        </div>
+                        <div style="color: var(--tg-theme-hint); font-size: 0.85rem;">CEO is online</div>
+                    </div>
+                    <div style="color: var(--tg-theme-hint); font-size: 0.75rem;">12:45 PM</div>
                 </div>
+            </div>
         </div>
 
-        <div class="chat-area" id="chatArea">
-            <div class="chat-top-bar">
-                <div style="display:flex; align-items:center; gap:15px;">
-                    <i class="fas fa-arrow-left action-btn back-btn" onclick="closeChat()" style="display:none; font-size: 1.2rem;"></i>
-                    <div class="c-avatar" style="width:40px; height:40px; font-size:1rem; background:#ff0050">K</div>
+        <div class="main-chat" id="mainChat">
+            <div class="chat-header">
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <i class="fas fa-arrow-left" onclick="closeChat()" style="cursor: pointer; display: none;" id="backBtn"></i>
+                    <div class="avatar" style="width: 40px; height: 40px; font-size: 1rem; background: #e67e22;">K</div>
                     <div>
-                        <div style="font-weight:500; font-size: 1.1rem;">KAWCHUR (CEO)</div>
-                        <div style="font-size:0.85rem; color:var(--primary);">last seen recently</div>
+                        <div style="font-weight: 500;">KAWCHUR</div>
+                        <div style="color: var(--tg-theme-link); font-size: 0.8rem;">online</div>
                     </div>
                 </div>
-                <div style="display:flex; gap:20px;">
-                    <i class="fas fa-phone-alt action-btn" onclick="startCall()"></i>
-                    <i class="fas fa-search action-btn"></i>
-                    <i class="fas fa-ellipsis-v action-btn"></i>
+                <div style="display: flex; gap: 20px; color: var(--tg-theme-hint);">
+                    <i class="fas fa-phone-alt" style="cursor: pointer;" onclick="toggleCall(true)"></i>
+                    <i class="fas fa-search"></i>
+                    <i class="fas fa-ellipsis-v"></i>
                 </div>
             </div>
-            
-            <div class="msg-scroll" id="msgScroll"></div>
-            
-            <div class="input-bar">
-                <input type="file" id="fileInput" style="display:none;" accept="image/*" onchange="uploadFile(event)">
-                <button class="action-btn" onclick="document.getElementById('fileInput').click()"><i class="fas fa-paperclip"></i></button>
-                
-                <div class="msg-input-wrap">
-                    <textarea id="msgInput" rows="1" placeholder="Write a message..."></textarea>
-                    <button class="action-btn"><i class="far fa-smile"></i></button>
+
+            <div class="messages-container" id="messages">
                 </div>
-                <button class="action-btn send-btn" onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
+
+            <div class="input-area">
+                <i class="far fa-smile" style="font-size: 1.5rem; color: var(--tg-theme-hint);"></i>
+                <input type="text" class="msg-input" id="msgInput" placeholder="Message">
+                <i class="fas fa-paperclip" style="font-size: 1.3rem; color: var(--tg-theme-hint);"></i>
+                <i class="fas fa-paper-plane" id="sendBtn" style="color: var(--accent); font-size: 1.3rem; cursor: pointer;"></i>
             </div>
         </div>
+    </div>
 
-        <div id="call-view">
-            <div class="call-avatar">K</div>
-            <h1 class="call-name">KAWCHUR (CEO)</h1>
-            <p style="color:var(--primary); letter-spacing:2px; margin-top:10px;">Flux Secure Call...</p>
-            <div class="call-actions">
-                <div class="call-btn btn-end" onclick="endCall()"><i class="fas fa-phone-slash"></i></div>
-                <div class="call-btn btn-accept" onclick="alert('Call Connected!')"><i class="fas fa-phone"></i></div>
+    <div id="call-screen">
+        <div style="text-align: center;">
+            <div class="avatar call-user-img" style="margin: 0 auto 20px; background: #e67e22; font-size: 3rem;">K</div>
+            <h2>KAWCHUR</h2>
+            <p style="color: var(--accent); margin-top: 10px;">Fluxgram Encryption...</p>
+        </div>
+        <div style="display: flex; gap: 50px;">
+            <div onclick="toggleCall(false)" style="background: #ff3b30; width: 65px; height: 65px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                <i class="fas fa-phone-slash" style="font-size: 1.5rem;"></i>
+            </div>
+            <div style="background: #4cd964; width: 65px; height: 65px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                <i class="fas fa-microphone" style="font-size: 1.5rem;"></i>
             </div>
         </div>
-
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
-        import { getAuth, RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-auth.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
-        import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-storage.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCsbZ1fqDivv8OyUiTcaEMcpZlJlM1TI6Y",
@@ -192,142 +175,80 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const storage = getStorage(app);
+        const provider = new GoogleAuthProvider();
 
         let currentUser = null;
-        let activeChatId = "global_chat"; // Using a global chat for demo
+        let activeChat = 'ceo_kawchur';
 
-        // --- AUTHENTICATION (Telegram Style Phone Auth) ---
+        // --- AUTHENTICATION ---
+        window.loginWithGoogle = () => {
+            signInWithPopup(auth, provider).catch(err => alert(err.message));
+        };
+
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 currentUser = user;
                 document.getElementById('auth-screen').style.display = 'none';
-                initChatApp();
+                loadMessages();
             } else {
                 document.getElementById('auth-screen').style.display = 'flex';
             }
         });
 
-        window.sendOTP = () => {
-            const phone = document.getElementById('authPhone').value;
-            if(!phone) return alert("Enter valid phone number!");
-            
-            window.recaptchaVerifier = new RecaptchaVerifier('recaptcha-container', { 'size': 'invisible' }, auth);
-            
-            signInWithPhoneNumber(auth, phone, window.recaptchaVerifier)
-                .then((confirmationResult) => {
-                    window.confirmationResult = confirmationResult;
-                    document.getElementById('step-phone').style.display = 'none';
-                    document.getElementById('step-otp').style.display = 'block';
-                }).catch((error) => {
-                    console.error("SMS not sent", error);
-                    alert("Error sending SMS. Ensure Phone Auth is enabled in Firebase Console.");
-                });
-        };
-
-        window.verifyOTP = () => {
-            const code = document.getElementById('authOTP').value;
-            confirmationResult.confirm(code).then((result) => {
-                currentUser = result.user;
-                document.getElementById('auth-screen').style.display = 'none';
-                initChatApp();
-            }).catch((error) => {
-                alert("Invalid OTP!");
-            });
-        };
-
-        // --- CHAT SYSTEM (Firestore) ---
-        function initChatApp() {
-            // Load Chat List
-            document.getElementById('chatList').innerHTML = `
-                <div class="chat-cell active">
-                    <div class="c-avatar" style="background:#ff0050">K</div>
-                    <div style="flex:1">
-                        <div style="display:flex; justify-content:space-between;">
-                            <span style="font-weight:500">KAWCHUR (CEO)</span>
-                            <span style="font-size:0.75rem; color:var(--text-muted)">Just now</span>
-                        </div>
-                        <div style="font-size:0.9rem; color:var(--text-muted)">Welcome to Fluxgram!</div>
-                    </div>
-                </div>
-            `;
-            loadMessages();
-        }
-
+        // --- MESSAGING ---
         function loadMessages() {
-            const scroll = document.getElementById('msgScroll');
-            const q = query(collection(db, "chats", activeChatId, "messages"), orderBy("timestamp", "asc"));
-            
+            const q = query(collection(db, "chats", activeChat, "messages"), orderBy("timestamp", "asc"));
             onSnapshot(q, (snapshot) => {
-                scroll.innerHTML = '';
+                const container = document.getElementById('messages');
+                container.innerHTML = '';
                 snapshot.forEach(doc => {
-                    const d = doc.data();
-                    const isMe = d.senderId === currentUser.uid;
-                    const time = d.timestamp ? new Date(d.timestamp.toDate()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '...';
-                    
-                    // Check if it's an image or text
-                    let contentHTML = d.imageUrl 
-                        ? `<img src="${d.imageUrl}" class="chat-img"><br>${d.text || ''}` 
-                        : d.text;
-
-                    scroll.innerHTML += `
-                        <div class="bubble-wrap ${isMe ? 'wrap-tx' : 'wrap-rx'}">
-                            <div class="bubble ${isMe ? 'bubble-tx' : 'bubble-rx'}">
-                                ${contentHTML}
-                                <span class="msg-time">${time} ${isMe ? '<i class="fas fa-check-double"></i>' : ''}</span>
+                    const data = doc.data();
+                    const isMe = data.senderId === currentUser.uid;
+                    container.innerHTML += `
+                        <div class="msg-bubble ${isMe ? 'msg-out' : 'msg-in'}">
+                            ${data.text}
+                            <div style="font-size: 0.65rem; text-align: right; opacity: 0.6; margin-top: 4px;">
+                                ${data.timestamp ? new Date(data.timestamp.toDate()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '...'}
                             </div>
                         </div>
                     `;
                 });
-                scroll.scrollTop = scroll.scrollHeight;
+                container.scrollTop = container.scrollHeight;
             });
         }
 
-        window.sendMessage = async (imageUrl = null) => {
+        document.getElementById('sendBtn').onclick = async () => {
             const input = document.getElementById('msgInput');
-            const text = input.value.trim();
-            if(!text && !imageUrl) return;
-            
-            await addDoc(collection(db, "chats", activeChatId, "messages"), {
-                text: text,
-                imageUrl: imageUrl,
+            if(!input.value.trim()) return;
+
+            await addDoc(collection(db, "chats", activeChat, "messages"), {
+                text: input.value,
                 senderId: currentUser.uid,
+                senderName: currentUser.displayName,
                 timestamp: serverTimestamp()
             });
             input.value = '';
         };
 
-        // --- FIREBASE STORAGE (Image Upload) ---
-        window.uploadFile = (event) => {
-            const file = event.target.files[0];
-            if(!file) return;
-
-            const storageRef = ref(storage, 'chat_images/' + Date.now() + '_' + file.name);
-            const uploadTask = uploadBytesResumable(storageRef, file);
-
-            uploadTask.on('state_changed', 
-                (snapshot) => { /* Could add progress bar here */ }, 
-                (error) => { alert("Upload failed!"); console.error(error); }, 
-                () => {
-                    getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-                        sendMessage(downloadURL); // Send image URL as message
-                    });
-                }
-            );
+        // --- UI HELPERS ---
+        window.toggleCall = (show) => {
+            document.getElementById('call-screen').style.display = show ? 'flex' : 'none';
         };
 
-        // --- UI UTILS & CALL SYSTEM ---
-        window.closeChat = () => document.getElementById('chatArea').classList.remove('active');
-        
-        window.startCall = () => document.getElementById('call-view').style.display = 'flex';
-        window.endCall = () => document.getElementById('call-view').style.display = 'none';
-
-        // Submit message on Enter key
-        document.getElementById('msgInput').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
+        window.openChat = () => {
+            if(window.innerWidth <= 768) {
+                document.getElementById('mainChat').classList.add('active');
+                document.getElementById('backBtn').style.display = 'block';
             }
+        };
+
+        window.closeChat = () => {
+            document.getElementById('mainChat').classList.remove('active');
+        };
+
+        // Enter to send
+        document.getElementById('msgInput').addEventListener('keypress', (e) => {
+            if(e.key === 'Enter') document.getElementById('sendBtn').click();
         });
     </script>
 </body>
