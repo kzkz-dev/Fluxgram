@@ -1,12 +1,12 @@
 // ============================================================================
-// app.js - Fluxgram Engine (Fixed Infinite Loading on Image Upload)
+// app.js - Fluxgram Complete Enterprise Engine (Fixed Profile Edit Bug)
 // ============================================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, RecaptchaVerifier, signInWithPhoneNumber, updateEmail, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, getDocs, collection, addDoc, updateDoc, deleteDoc, onSnapshot, query, where, orderBy, serverTimestamp, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-// Changed to uploadBytes for reliable async/await without hanging
-import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
+// --- 1. FIREBASE INITIALIZATION ---
 const firebaseConfig = {
     apiKey: "AIzaSyCsbZ1fqDivv8OyUiTcaEMcpZlJlM1TI6Y",
     authDomain: "fluxgram-87009.firebaseapp.com",
@@ -21,14 +21,25 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
+// --- 2. GLOBAL NAMESPACE ---
 window.Fluxgram = {
-    state: { currentUser: null, userData: null, activeChatId: null, activeChatUser: null, activeChatData: null, unsubMessages: null, unsubChats: null, typingTimeout: null, callDocId: null },
+    state: { 
+        currentUser: null, 
+        userData: null, 
+        activeChatId: null, 
+        activeChatUser: null, 
+        activeChatData: null, 
+        unsubMessages: null, 
+        unsubChats: null, 
+        typingTimeout: null, 
+        callDocId: null 
+    },
     ui: {}, auth: {}, dash: {}, chat: {}, call: {}, utils: {}, profile: {}
 };
 
 const State = window.Fluxgram.state;
 
-// --- 3. UTILS & RENDERERS ---
+// --- 3. UTILS ---
 window.Fluxgram.utils = {
     isUsernameUnique: async (username, currentUsername = null) => {
         const u = username.toLowerCase().replace('@', '');
@@ -45,17 +56,10 @@ window.Fluxgram.utils = {
         if(photoURL) return `<img src="${photoURL}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;" class="${sizeClass}">`;
         return `<span class="${sizeClass}">${(fallbackName||'U').charAt(0).toUpperCase()}</span>`;
     },
-    // NEW UPLOAD FUNCTION (Prevents Infinite Loading)
     uploadImage: async (file, path) => {
-        try {
-            const storageRef = ref(storage, `${path}/${Date.now()}_${file.name}`);
-            const snapshot = await uploadBytes(storageRef, file);
-            const downloadURL = await getDownloadURL(snapshot.ref);
-            return downloadURL;
-        } catch (error) {
-            console.error("Storage Upload Error:", error);
-            throw new Error("Failed to upload image. Please check Firebase Storage Rules!");
-        }
+        const storageRef = ref(storage, `${path}/${Date.now()}_${file.name}`);
+        const uploadTask = await uploadBytesResumable(storageRef, file);
+        return await getDownloadURL(uploadTask.ref);
     }
 };
 const Utils = window.Fluxgram.utils;
@@ -219,10 +223,10 @@ window.Fluxgram.profile = {
         try {
             if(!(await Utils.isUsernameUnique(u, State.userData.username))) throw new Error("This @username is already taken!");
 
+            // FIX: Ensure photoURL is never undefined. Default to null.
             let photoURL = State.userData.photoURL !== undefined ? State.userData.photoURL : null;
             
             if(fileInput && fileInput.files.length > 0) {
-                // Uploading image and getting URL
                 photoURL = await Utils.uploadImage(fileInput.files[0], 'avatars/users');
             }
 
@@ -231,7 +235,7 @@ window.Fluxgram.profile = {
                 username: u, 
                 searchKey: u.toLowerCase(), 
                 bio: b, 
-                photoURL: photoURL 
+                photoURL: photoURL || null // Extra safety net
             }, { merge: true });
             
             document.getElementById('edit-user-modal').classList.add('hidden');
@@ -294,8 +298,8 @@ window.Fluxgram.profile = {
         try {
             if(u && !(await Utils.isUsernameUnique(u, State.activeChatData.username))) throw new Error("This @username is already taken!");
 
+            // FIX: Ensure photoURL is never undefined
             let photoURL = State.activeChatData.photoURL !== undefined ? State.activeChatData.photoURL : null;
-            
             if(fileInput && fileInput.files.length > 0) {
                 photoURL = await Utils.uploadImage(fileInput.files[0], 'avatars/chats');
             }
@@ -305,7 +309,7 @@ window.Fluxgram.profile = {
                 username: u || null, 
                 searchKey: u ? u.toLowerCase() : null, 
                 desc: desc, 
-                photoURL: photoURL 
+                photoURL: photoURL || null // Extra safety net
             });
             document.getElementById('edit-chat-modal').classList.add('hidden');
             UI.toast("Updated successfully!");
@@ -360,7 +364,6 @@ window.Fluxgram.dash = {
         const name = document.getElementById('create-name').value.trim();
         const desc = document.getElementById('create-desc').value.trim();
         let username = document.getElementById('create-username').value.trim().replace('@', '');
-        const fileInput = document.getElementById('create-avatar-input');
         
         if(!name) return UI.toast("Name is required", "error");
         if(username && username.length < 6) return UI.toast("Username must be at least 6 chars", "error");
@@ -369,11 +372,8 @@ window.Fluxgram.dash = {
         try {
             if(username && !(await Utils.isUsernameUnique(username))) throw new Error("This @username is already taken!");
             
-            let photoURL = null;
-            if(fileInput && fileInput.files.length > 0) photoURL = await Utils.uploadImage(fileInput.files[0], 'avatars/chats');
-
             const newRef = await addDoc(collection(db, "chats"), {
-                type: type, name: name, desc: desc, username: username || null, searchKey: username ? username.toLowerCase() : null, photoURL: photoURL,
+                type: type, name: name, desc: desc, username: username || null, searchKey: username ? username.toLowerCase() : null, photoURL: null,
                 admin: State.currentUser.uid, members: [State.currentUser.uid], createdAt: serverTimestamp(), updatedAt: serverTimestamp(), lastMessage: `Created ${type}`, unreadCount: 0
             });
             window.location.href = `chat.html?chatId=${newRef.id}`;
