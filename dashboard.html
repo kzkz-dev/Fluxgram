@@ -2,22 +2,35 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Fluxgram | Chats</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Fluxgram | Dashboard</title>
     <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
-    <div class="header">
-        <div class="header-title">Fluxgram</div>
-        <button class="icon-btn" onclick="logout()">Logout</button>
-    </div>
 
-    <div class="search-bar">
-        <input type="text" id="searchInput" class="search-input" placeholder="Search users by username..." oninput="searchUsers()">
-    </div>
+    <div id="global-loader" class="loader-overlay hidden"><div class="spinner"></div></div>
 
-    <div class="chat-list" id="chatList">
-        <div style="text-align: center; margin-top: 20px; color: var(--text-muted);">Loading chats...</div>
+    <div class="app-container">
+        <div class="header">
+            <div class="header-title" style="color:var(--primary); font-weight:800;"><i class="fas fa-bolt"></i> Fluxgram</div>
+            <button class="icon-btn" onclick="Fluxgram.auth.logout()"><i class="fas fa-sign-out-alt"></i></button>
+        </div>
+
+        <div class="search-bar">
+            <div class="search-input-wrap">
+                <i class="fas fa-search" style="color:var(--text-muted)"></i>
+                <input type="text" id="search-input" placeholder="Search users by username..." oninput="Fluxgram.dash.search()">
+            </div>
+        </div>
+
+        <div class="scroll-area">
+            <div id="search-results" class="hidden" style="border-bottom: 2px solid var(--divider);"></div>
+            
+            <div id="chat-list">
+                <div style="padding:20px; text-align:center;"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
+            </div>
+        </div>
     </div>
 
     <script type="module" src="app.js"></script>
