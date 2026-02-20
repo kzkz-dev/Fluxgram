@@ -1,5 +1,5 @@
 // ============================================================================
-// app.js - Core Application Logic (Optimized & Error-Proof)
+// app.js - Core Application Logic (Optimized & Error-Proof with WebRTC)
 // ============================================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -21,11 +21,12 @@ const db = getFirestore(app);
 
 // --- 2. GLOBAL APP NAMESPACE ---
 window.Fluxgram = {
-    state: { currentUser: null, activeChatId: null, activeChatUser: null, unsubMessages: null, unsubChats: null, typingTimeout: null },
+    state: { currentUser: null, activeChatId: null, activeChatUser: null, unsubMessages: null, unsubChats: null, typingTimeout: null, callDocId: null },
     ui: {},
     auth: {},
     dash: {},
-    chat: {}
+    chat: {},
+    call: {}
 };
 
 // --- 3. UI HELPERS ---
@@ -77,7 +78,6 @@ window.Fluxgram.auth = {
             await signInWithEmailAndPassword(auth, e, p);
         } catch (err) { 
             UI.toast("Invalid credentials. Check email & password.", "error"); 
-            console.error("Login Error:", err);
         } finally {
             UI.loader(false);
         }
@@ -106,7 +106,6 @@ window.Fluxgram.auth = {
             UI.toast("Account created successfully!");
         } catch (err) { 
             UI.toast(err.message, "error"); 
-            console.error("Signup Error:", err);
         } finally {
             UI.loader(false);
         }
@@ -152,8 +151,10 @@ onAuthStateChanged(auth, (user) => {
             window.location.replace('dashboard.html');
         } else if (path.endsWith('dashboard.html')) {
             window.Fluxgram.dash.loadChats();
+            window.Fluxgram.call.listenForCalls(); // Start listening for incoming calls
         } else if (path.endsWith('chat.html')) {
             window.Fluxgram.chat.init();
+            window.Fluxgram.call.listenForCalls(); // Listen here too
         }
     } else {
         State.currentUser = null;
@@ -213,8 +214,6 @@ window.Fluxgram.dash = {
         const list = document.getElementById('chat-list');
         if(!list) return;
 
-        // NOTE: Removed orderBy("updatedAt", "desc") to prevent Missing Index error on initial load.
-        // It will now load chats correctly. You can add it back once you create the index in Firebase Console.
         const q = query(collection(db, "chats"), where("members", "array-contains", State.currentUser.uid));
         
         State.unsubChats = onSnapshot(q, async (snapshot) => {
@@ -225,7 +224,6 @@ window.Fluxgram.dash = {
                 return;
             }
 
-            // We sort manually in JS to avoid the Firebase Index requirement for now
             const chatDocs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             chatDocs.sort((a, b) => {
                 const timeA = a.updatedAt ? a.updatedAt.toMillis() : 0;
@@ -264,9 +262,6 @@ window.Fluxgram.dash = {
                     console.error("Error loading user profile for chat list:", err);
                 }
             }
-        }, (error) => {
-            console.error("Chat List Snapshot Error:", error);
-            list.innerHTML = `<div style="padding:30px; text-align:center; color:var(--danger);">Error loading chats. Check Firebase Security Rules.</div>`;
         });
     }
 };
@@ -363,8 +358,6 @@ window.Fluxgram.chat = {
                 `;
             });
             setTimeout(() => { container.scrollTop = container.scrollHeight; }, 100);
-        }, (error) => {
-            console.error("Message Load Error:", error);
         });
     },
 
@@ -410,5 +403,195 @@ window.Fluxgram.chat = {
         State.typingTimeout = setTimeout(() => {
             setDoc(doc(db, "chats", State.activeChatId), { typing: [] }, { merge: true });
         }, 1500);
+    }
+};
+
+// --- 9. WEBRTC CALLING SYSTEM ---
+const servers = { iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }] };
+let pc = null;
+let localStream = null;
+
+window.Fluxgram.call = {
+    startCall: async (type) => {
+        const State = window.Fluxgram.state;
+        if(!State.activeChatUser) return;
+        
+        const callDoc = doc(collection(db, "calls"));
+        State.callDocId = callDoc.id;
+
+        // Display UI
+        const callScreen = document.getElementById('call-screen');
+        if(!callScreen) return; // Ensure we are on chat.html
+        
+        callScreen.classList.remove('hidden');
+        document.getElementById('callName').innerText = State.activeChatUser.username;
+        document.getElementById('callStatus').innerText = "Calling...";
+        document.getElementById('call-controls-active').classList.remove('hidden');
+        document.getElementById('call-controls-incoming').classList.add('hidden');
+
+        try {
+            // Request Camera/Mic Access
+            localStream = await navigator.mediaDevices.getUserMedia({ video: type === 'video', audio: true });
+            document.getElementById('localVideo').srcObject = localStream;
+
+            pc = new RTCPeerConnection(servers);
+            localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+
+            pc.ontrack = (event) => {
+                document.getElementById('remoteVideo').srcObject = event.streams[0];
+                document.getElementById('callStatus').innerText = "Connected";
+            };
+
+            const offerCandidates = collection(callDoc, 'offerCandidates');
+            pc.onicecandidate = (event) => {
+                if(event.candidate) addDoc(offerCandidates, event.candidate.toJSON());
+            };
+
+            // Create Offer
+            const offerDescription = await pc.createOffer();
+            await pc.setLocalDescription(offerDescription);
+
+            await setDoc(callDoc, {
+                offer: { type: offerDescription.type, sdp: offerDescription.sdp },
+                callerId: State.currentUser.uid, 
+                receiverId: State.activeChatUser.uid, 
+                type: type, 
+                status: 'ringing'
+            });
+
+            // Listen for Answer
+            onSnapshot(callDoc, (snapshot) => {
+                const data = snapshot.data();
+                if (!pc.currentRemoteDescription && data?.answer) {
+                    const answerDescription = new RTCSessionDescription(data.answer);
+                    pc.setRemoteDescription(answerDescription);
+                }
+                if(data?.status === 'ended') window.Fluxgram.call.endCallLocal();
+            });
+
+            // Listen for Remote ICE
+            onSnapshot(collection(callDoc, 'answerCandidates'), (snapshot) => {
+                snapshot.docChanges().forEach((change) => {
+                    if (change.type === 'added') pc.addIceCandidate(new RTCIceCandidate(change.doc.data()));
+                });
+            });
+
+        } catch (err) {
+            UI.toast("Camera/Mic access denied.", "error");
+            window.Fluxgram.call.endCallLocal();
+        }
+    },
+
+    listenForCalls: () => {
+        const State = window.Fluxgram.state;
+        const callScreen = document.getElementById('call-screen');
+        if(!callScreen) return; // Prevent errors on dashboard.html if call overlay is missing
+        
+        const q = query(collection(db, "calls"), where("receiverId", "==", State.currentUser.uid), where("status", "==", "ringing"));
+        onSnapshot(q, (snapshot) => {
+            snapshot.docChanges().forEach(async (change) => {
+                if(change.type === 'added') {
+                    const callData = change.doc.data();
+                    State.callDocId = change.doc.id;
+                    
+                    const callerDoc = await getDoc(doc(db, "users", callData.callerId));
+                    const callerName = callerDoc.exists() ? callerDoc.data().username : "Unknown";
+                    
+                    callScreen.classList.remove('hidden');
+                    document.getElementById('callName').innerText = callerName;
+                    document.getElementById('callStatus').innerText = "Incoming Call...";
+                    document.getElementById('call-controls-active').classList.add('hidden');
+                    document.getElementById('call-controls-incoming').classList.remove('hidden');
+                }
+            });
+        });
+    },
+
+    acceptCall: async () => {
+        const State = window.Fluxgram.state;
+        document.getElementById('call-controls-active').classList.remove('hidden');
+        document.getElementById('call-controls-incoming').classList.add('hidden');
+        document.getElementById('callStatus').innerText = "Connecting...";
+
+        const callDocRef = doc(db, "calls", State.callDocId);
+        const callDoc = await getDoc(callDocRef);
+        const callData = callDoc.data();
+
+        try {
+            localStream = await navigator.mediaDevices.getUserMedia({ video: callData.type === 'video', audio: true });
+            document.getElementById('localVideo').srcObject = localStream;
+
+            pc = new RTCPeerConnection(servers);
+            localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+
+            pc.ontrack = (event) => {
+                document.getElementById('remoteVideo').srcObject = event.streams[0];
+                document.getElementById('callStatus').innerText = "Connected";
+            };
+
+            const answerCandidates = collection(callDocRef, 'answerCandidates');
+            pc.onicecandidate = (event) => {
+                if(event.candidate) addDoc(answerCandidates, event.candidate.toJSON());
+            };
+
+            await pc.setRemoteDescription(new RTCSessionDescription(callData.offer));
+            const answerDescription = await pc.createAnswer();
+            await pc.setLocalDescription(answerDescription);
+
+            await updateDoc(callDocRef, { 
+                answer: { type: answerDescription.type, sdp: answerDescription.sdp }, 
+                status: 'connected' 
+            });
+
+            onSnapshot(collection(callDocRef, 'offerCandidates'), (snapshot) => {
+                snapshot.docChanges().forEach((change) => {
+                    if (change.type === 'added') pc.addIceCandidate(new RTCIceCandidate(change.doc.data()));
+                });
+            });
+            
+            onSnapshot(callDocRef, (snap) => { if(snap.data()?.status === 'ended') window.Fluxgram.call.endCallLocal(); });
+        } catch (err) {
+            UI.toast("Camera/Mic access denied.", "error");
+            window.Fluxgram.call.endCall();
+        }
+    },
+
+    endCall: async () => {
+        const State = window.Fluxgram.state;
+        if(State.callDocId) {
+            await updateDoc(doc(db, "calls", State.callDocId), { status: 'ended' });
+        }
+        window.Fluxgram.call.endCallLocal();
+    },
+
+    endCallLocal: () => {
+        const State = window.Fluxgram.state;
+        if(pc) { pc.close(); pc = null; }
+        if(localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+        document.getElementById('remoteVideo').srcObject = null;
+        document.getElementById('localVideo').srcObject = null;
+        
+        const callScreen = document.getElementById('call-screen');
+        if(callScreen) callScreen.classList.add('hidden');
+        
+        State.callDocId = null;
+    },
+
+    toggleMic: () => {
+        if(!localStream) return;
+        const audioTrack = localStream.getAudioTracks()[0];
+        audioTrack.enabled = !audioTrack.enabled;
+        const icon = document.getElementById('mic-icon');
+        if(icon) icon.className = audioTrack.enabled ? 'fas fa-microphone' : 'fas fa-microphone-slash';
+    },
+
+    toggleCam: () => {
+        if(!localStream) return;
+        const videoTrack = localStream.getVideoTracks()[0];
+        if(videoTrack) {
+            videoTrack.enabled = !videoTrack.enabled;
+            const icon = document.getElementById('cam-icon');
+            if(icon) icon.className = videoTrack.enabled ? 'fas fa-video' : 'fas fa-video-slash';
+        }
     }
 };
