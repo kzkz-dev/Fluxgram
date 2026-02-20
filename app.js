@@ -1,8 +1,9 @@
 // ============================================================================
-// app.js - Fluxgram Engine (Storage-Free Base64 + Detailed Error Handling)
+// app.js - Fluxgram Engine (Email Verification Link Edition)
 // ============================================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateEmail, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+// FIX: Added 'verifyBeforeUpdateEmail' for sending links
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, verifyBeforeUpdateEmail } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, getDocs, collection, addDoc, updateDoc, deleteDoc, onSnapshot, query, where, orderBy, serverTimestamp, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -250,32 +251,28 @@ window.Fluxgram.profile = {
         } catch(e) { UI.toast(e.message, "error"); } finally { UI.loader(false); }
     },
 
+    // 🔥 NEW: VERIFICATION LINK SYSTEM 🔥
     changeEmail: async () => {
-        const pass = document.getElementById('email-change-password').value;
         const newEmail = document.getElementById('email-change-new').value.trim();
-        if(!pass || !newEmail) return UI.toast("Enter password and new email", "error");
+        if(!newEmail) return UI.toast("Enter a new email address", "error");
         
         UI.loader(true);
         try {
-            const credential = EmailAuthProvider.credential(State.currentUser.email, pass);
-            await reauthenticateWithCredential(auth.currentUser, credential);
-            await updateEmail(auth.currentUser, newEmail);
-            await setDoc(doc(db, "users", State.currentUser.uid), { email: newEmail }, { merge: true });
+            // Sends a verification link to the NEW email address
+            await verifyBeforeUpdateEmail(auth.currentUser, newEmail);
             
             document.getElementById('email-change-modal').classList.add('hidden'); 
-            document.getElementById('display-email').innerText = newEmail; 
-            UI.toast("Email updated successfully!", "success");
+            UI.toast("Verification link sent! Check your new email inbox.", "success");
             
-            document.getElementById('email-change-password').value = '';
             document.getElementById('email-change-new').value = '';
 
         } catch(e) { 
-            console.error("Email Change Error:", e);
+            console.error("Email Link Error:", e);
             let errorMsg = e.message;
-            if (e.code === 'auth/email-already-in-use') {
-                errorMsg = "This email is already registered to another account!";
-            } else if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
-                errorMsg = "Incorrect current password!";
+            if (e.code === 'auth/requires-recent-login') {
+                errorMsg = "Security alert: Please log out and log in again to do this.";
+            } else if (e.code === 'auth/email-already-in-use') {
+                errorMsg = "This email is already registered!";
             }
             UI.toast(errorMsg, "error"); 
         } finally { 
