@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Fluxgram | Chats</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="header">
+        <div class="header-title">Fluxgram</div>
+        <button class="icon-btn" onclick="logout()">Logout</button>
+    </div>
+
+    <div class="search-bar">
+        <input type="text" id="searchInput" class="search-input" placeholder="Search users by username..." oninput="searchUsers()">
+    </div>
+
+    <div class="chat-list" id="chatList">
+        <div style="text-align: center; margin-top: 20px; color: var(--text-muted);">Loading chats...</div>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>
