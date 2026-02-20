@@ -1,17 +1,16 @@
 // ============================================================================
-// app.js - Fluxgram Engine (Direct Upload Edition - Fixes Browser Memory Crash)
+// app.js - Fluxgram Engine (Storage-Free Base64 Image Edition)
 // ============================================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateEmail, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, getDocs, collection, addDoc, updateDoc, deleteDoc, onSnapshot, query, where, orderBy, serverTimestamp, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-// Using ultra-light uploadBytes to prevent mobile browser memory crash
-import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+// NO FIREBASE STORAGE NEEDED ANYMORE!
 
 const firebaseConfig = {
     apiKey: "AIzaSyCsbZ1fqDivv8OyUiTcaEMcpZlJlM1TI6Y",
     authDomain: "fluxgram-87009.firebaseapp.com",
     projectId: "fluxgram-87009",
-    storageBucket: "fluxgram-87009.firebasestorage.app",
+    storageBucket: "fluxgram-87009.firebasestorage.app", // Keeping for config completeness
     messagingSenderId: "698836385253",
     appId: "1:698836385253:web:c40e67ee9006cff536830c"
 };
@@ -19,7 +18,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const storage = getStorage(app);
 
 window.Fluxgram = {
     state: { currentUser: null, userData: null, activeChatId: null, activeChatUser: null, activeChatData: null, unsubMessages: null, unsubChats: null, typingTimeout: null, callDocId: null },
@@ -39,7 +37,7 @@ const getMillis = (ts) => {
     return 0;
 };
 
-// --- UTILS & RENDERERS ---
+// --- UTILS & BASE64 COMPRESSOR ---
 window.Fluxgram.utils = {
     isUsernameUnique: async (username, currentUsername = null) => {
         const u = username.toLowerCase().replace('@', '');
@@ -51,8 +49,25 @@ window.Fluxgram.utils = {
     },
     parseMentions: (text) => text.replace(/@([a-zA-Z0-9_]{6,})/g, '<span style="color: var(--accent); cursor: pointer; text-decoration: underline;" onclick="Fluxgram.chat.openByUsername(\'$1\')">@$1</span>'),
     renderAvatarHTML: (photoURL, fallbackName, sizeClass = '') => {
-        if(photoURL) return `<img src="${photoURL}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;" class="${sizeClass}">`;
+        if(photoURL && photoURL.length > 10) return `<img src="${photoURL}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;" class="${sizeClass}">`;
         return `<span class="${sizeClass}">${(fallbackName||'U').charAt(0).toUpperCase()}</span>`;
+    },
+    // 🔥 THE MAGIC COMPRESSOR: Converts Image to Tiny Text Code 🔥
+    compressToBase64: (dataUrl, maxWidth = 150, quality = 0.6) => {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.src = dataUrl;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const scaleSize = maxWidth / img.width;
+                canvas.width = maxWidth;
+                canvas.height = img.height * scaleSize;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                resolve(canvas.toDataURL('image/jpeg', quality)); // Tiny Base64 String
+            };
+            img.onerror = () => resolve(dataUrl);
+        });
     }
 };
 const Utils = window.Fluxgram.utils;
@@ -180,7 +195,7 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
-// --- PROFILE & SETTINGS MANAGER (DIRECT UPLOAD) ---
+// --- PROFILE & SETTINGS MANAGER (DIRECT DATABASE IMAGE SAVE) ---
 window.Fluxgram.profile = {
     previewImage: (event, imgId, textId) => {
         const file = event.target.files[0];
@@ -204,7 +219,7 @@ window.Fluxgram.profile = {
         
         const preview = document.getElementById('user-avatar-preview');
         const text = document.getElementById('user-avatar-text');
-        if(State.userData.photoURL) {
+        if(State.userData.photoURL && State.userData.photoURL.length > 10) {
             preview.src = State.userData.photoURL; preview.classList.remove('hidden'); text.classList.add('hidden');
         } else {
             preview.classList.add('hidden'); text.classList.remove('hidden');
@@ -217,7 +232,7 @@ window.Fluxgram.profile = {
         const n = document.getElementById('edit-user-name').value.trim();
         let u = document.getElementById('edit-user-username').value.trim().replace('@', '');
         const b = document.getElementById('edit-user-bio').value.trim();
-        const fileInput = document.getElementById('user-avatar-input');
+        const previewImg = document.getElementById('user-avatar-preview');
         
         if(!u || u.length < 6) return UI.toast("Username must be at least 6 chars", "error");
         
@@ -227,12 +242,9 @@ window.Fluxgram.profile = {
             
             let finalPhotoURL = State.userData.photoURL !== undefined ? State.userData.photoURL : null;
             
-            // Direct Upload without Canvas Compression
-            if(fileInput && fileInput.files.length > 0) {
-                const file = fileInput.files[0];
-                const storageRef = ref(storage, `avatars/users/${Date.now()}_${file.name}`);
-                const snapshot = await uploadBytes(storageRef, file);
-                finalPhotoURL = await getDownloadURL(snapshot.ref);
+            // MAGIC: Compress Base64 and Save Directly to Firestore Document!
+            if(previewImg && !previewImg.classList.contains('hidden') && previewImg.src.startsWith('data:')) {
+                finalPhotoURL = await Utils.compressToBase64(previewImg.src, 150, 0.6); // 150px, low size
             }
 
             await setDoc(doc(db, "users", State.currentUser.uid), { name: n, username: u, searchKey: u.toLowerCase(), bio: b, photoURL: finalPhotoURL }, { merge: true });
@@ -263,7 +275,7 @@ window.Fluxgram.profile = {
         document.getElementById('edit-chat-desc').value = d.desc || '';
         const preview = document.getElementById('chat-avatar-preview');
         const text = document.getElementById('chat-avatar-text');
-        if(d.photoURL) { preview.src = d.photoURL; preview.classList.remove('hidden'); text.classList.add('hidden'); } 
+        if(d.photoURL && d.photoURL.length > 10) { preview.src = d.photoURL; preview.classList.remove('hidden'); text.classList.add('hidden'); } 
         else { preview.classList.add('hidden'); text.classList.remove('hidden'); text.innerText = (d.name || 'G').charAt(0).toUpperCase(); }
         document.getElementById('edit-chat-modal').classList.remove('hidden');
     },
@@ -272,7 +284,7 @@ window.Fluxgram.profile = {
         const n = document.getElementById('edit-chat-name').value.trim();
         let u = document.getElementById('edit-chat-username').value.trim().replace('@', '');
         const desc = document.getElementById('edit-chat-desc').value.trim();
-        const fileInput = document.getElementById('chat-avatar-input');
+        const previewImg = document.getElementById('chat-avatar-preview');
 
         if(!n) return UI.toast("Name is required", "error");
         if(u && u.length < 6) return UI.toast("Username must be at least 6 chars", "error");
@@ -283,12 +295,9 @@ window.Fluxgram.profile = {
             
             let finalPhotoURL = State.activeChatData.photoURL !== undefined ? State.activeChatData.photoURL : null;
             
-            // Direct Upload without Canvas Compression
-            if(fileInput && fileInput.files.length > 0) {
-                const file = fileInput.files[0];
-                const storageRef = ref(storage, `avatars/chats/${Date.now()}_${file.name}`);
-                const snapshot = await uploadBytes(storageRef, file);
-                finalPhotoURL = await getDownloadURL(snapshot.ref);
+            // MAGIC: Compress Base64 and Save Directly to Firestore Document!
+            if(previewImg && !previewImg.classList.contains('hidden') && previewImg.src.startsWith('data:')) {
+                finalPhotoURL = await Utils.compressToBase64(previewImg.src, 150, 0.6);
             }
 
             await updateDoc(doc(db, "chats", State.activeChatId), { name: n, username: u || null, searchKey: u ? u.toLowerCase() : null, desc: desc, photoURL: finalPhotoURL });
@@ -344,7 +353,7 @@ window.Fluxgram.dash = {
         const name = document.getElementById('create-name').value.trim();
         const desc = document.getElementById('create-desc').value.trim();
         let username = document.getElementById('create-username').value.trim().replace('@', '');
-        const fileInput = document.getElementById('create-avatar-input');
+        const previewImg = document.getElementById('create-avatar-preview');
         
         if(!name) return UI.toast("Name is required", "error");
         if(username && username.length < 6) return UI.toast("Username must be at least 6 chars", "error");
@@ -354,11 +363,8 @@ window.Fluxgram.dash = {
             if(username && !(await Utils.isUsernameUnique(username))) throw new Error("This @username is already taken!");
             
             let photoURL = null;
-            if(fileInput && fileInput.files.length > 0) {
-                const file = fileInput.files[0];
-                const storageRef = ref(storage, `avatars/chats/${Date.now()}_${file.name}`);
-                const snapshot = await uploadBytes(storageRef, file);
-                photoURL = await getDownloadURL(snapshot.ref);
+            if(previewImg && !previewImg.classList.contains('hidden') && previewImg.src.startsWith('data:')) {
+                photoURL = await Utils.compressToBase64(previewImg.src, 150, 0.6);
             }
 
             const newRef = await addDoc(collection(db, "chats"), {
