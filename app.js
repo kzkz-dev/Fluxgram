@@ -1,5 +1,5 @@
 // ============================================================================
-// app.js - Fluxgram Engine (Images, Voice, Emojis, Video Calls & Dates Added)
+// app.js - Fluxgram Engine (Premium Profile UI + Full Features)
 // ============================================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateEmail, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -96,6 +96,7 @@ window.Fluxgram.ui = {
     autoResize: (el) => { if (el) { el.style.height = 'auto'; el.style.height = (el.scrollHeight) + 'px'; } },
     getParam: (param) => new URLSearchParams(window.location.search).get(param),
     
+    // 🔥 UPDATED: PREMIUM PROFILE VIEW 🔥
     showProfile: () => {
         const pv = document.getElementById('profile-view');
         if(!pv) return;
@@ -107,18 +108,29 @@ window.Fluxgram.ui = {
             document.getElementById('pv-status').innerText = `${d.members.length} Members`;
             document.getElementById('pv-bio').innerText = d.desc || "No description provided.";
             document.getElementById('pv-bio-label').innerText = "Description";
+            
+            // Hide Call Buttons for Groups
+            document.getElementById('pv-btn-audio').classList.add('hidden');
+            document.getElementById('pv-btn-video').classList.add('hidden');
+
             if(d.username) { document.getElementById('pv-username-box').classList.remove('hidden'); document.getElementById('pv-username').innerText = `@${d.username}`; } 
             else { document.getElementById('pv-username-box').classList.add('hidden'); }
             document.getElementById('pv-phone-box').classList.add('hidden');
+            
             const editBtn = document.getElementById('btn-edit-chat');
             if(editBtn) { if(d.admin === State.currentUser.uid) editBtn.classList.remove('hidden'); else editBtn.classList.add('hidden'); }
         } else if (State.activeChatUser) {
             const u = State.activeChatUser;
             document.getElementById('pv-name').innerText = u.name || u.username;
             document.getElementById('pv-avatar').innerHTML = Utils.renderAvatarHTML(u.photoURL, u.username || u.name);
-            document.getElementById('pv-status').innerText = u.isOnline ? 'Online' : 'Offline';
+            document.getElementById('pv-status').innerText = u.isOnline ? 'Online' : 'last seen recently';
             document.getElementById('pv-bio').innerText = u.bio || "Available on Fluxgram";
             document.getElementById('pv-bio-label').innerText = "Bio";
+            
+            // Show Call Buttons for Users
+            document.getElementById('pv-btn-audio').classList.remove('hidden');
+            document.getElementById('pv-btn-video').classList.remove('hidden');
+
             if(u.username) { document.getElementById('pv-username-box').classList.remove('hidden'); document.getElementById('pv-username').innerText = `@${u.username}`; } 
             else { document.getElementById('pv-username-box').classList.add('hidden'); }
             if(u.phone || u.email) { document.getElementById('pv-phone-box').classList.remove('hidden'); document.getElementById('pv-phone').innerText = u.phone || u.email; } 
@@ -260,27 +272,14 @@ window.Fluxgram.profile = {
         const pass = document.getElementById('email-change-password').value;
         const newEmail = document.getElementById('email-change-new').value.trim();
         if(!pass || !newEmail) return UI.toast("Enter password and new email", "error");
-        
         UI.loader(true);
         try {
             const credential = EmailAuthProvider.credential(State.currentUser.email, pass);
             await reauthenticateWithCredential(auth.currentUser, credential);
             await updateEmail(auth.currentUser, newEmail);
             await setDoc(doc(db, "users", State.currentUser.uid), { email: newEmail }, { merge: true });
-            
-            document.getElementById('email-change-modal').classList.add('hidden'); 
-            document.getElementById('display-email').innerText = newEmail; 
-            UI.toast("Email updated successfully!", "success");
-            
-            document.getElementById('email-change-password').value = '';
-            document.getElementById('email-change-new').value = '';
-
-        } catch(e) { 
-            let errorMsg = e.message;
-            if (e.code === 'auth/email-already-in-use') errorMsg = "This email is already registered!";
-            else if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') errorMsg = "Incorrect current password!";
-            UI.toast(errorMsg, "error"); 
-        } finally { UI.loader(false); }
+            document.getElementById('email-change-modal').classList.add('hidden'); document.getElementById('display-email').innerText = newEmail; UI.toast("Email updated successfully!", "success");
+        } catch(e) { UI.toast("Error: Incorrect password or invalid email.", "error"); } finally { UI.loader(false); }
     },
 
     openChatEdit: () => {
@@ -331,6 +330,7 @@ window.Fluxgram.profile = {
     }
 };
 
+// --- DASHBOARD LOGIC ---
 window.Fluxgram.dash = {
     search: async () => {
         const term = document.getElementById('search-input').value.trim().toLowerCase().replace('@', '');
@@ -426,7 +426,7 @@ window.Fluxgram.dash = {
     }
 };
 
-// --- CHAT LOGIC (IMAGES, VOICE & EMOJIS ADDED) ---
+// --- CHAT LOGIC (IMAGES, VOICE & EMOJIS) ---
 let voiceRecorder;
 let voiceChunks = [];
 
@@ -483,7 +483,6 @@ window.Fluxgram.chat = {
             if(msgInput) {
                 msgInput.addEventListener('input', () => { 
                     UI.autoResize(msgInput); 
-                    // Toggle Send vs Mic Button
                     if(msgInput.value.trim().length > 0) {
                         document.getElementById('btn-send-text').classList.remove('hidden');
                         document.getElementById('btn-record-voice').classList.add('hidden');
@@ -496,10 +495,9 @@ window.Fluxgram.chat = {
             }
 
             window.Fluxgram.chat.loadMessages();
-        } catch(error) { UI.toast("Failed to load chat: " + error.message, "error"); }
+        } catch(error) { UI.toast("Failed to load chat", "error"); }
     },
     
-    // 🔥 DATE DIVIDER ADDED 🔥
     loadMessages: () => {
         const container = document.getElementById('messages-container');
         if(!container) return;
@@ -514,13 +512,11 @@ window.Fluxgram.chat = {
                 const timeStr = formatTime(msg.timestamp);
                 const dateStr = formatDate(msg.timestamp);
                 
-                // Show Date Divider if new day
                 if(dateStr && dateStr !== lastDateStr) {
                     container.innerHTML += `<div class="date-divider"><span>${dateStr}</span></div>`;
                     lastDateStr = dateStr;
                 }
 
-                // Parse content based on type (Text, Image, Audio)
                 let contentHTML = '';
                 if(msg.text) contentHTML += Utils.parseMentions((msg.text||'').replace(/\n/g, '<br>'));
                 if(msg.image) contentHTML += `<img src="${msg.image}" class="chat-img" onclick="window.open('${msg.image}')">`;
@@ -534,7 +530,6 @@ window.Fluxgram.chat = {
         });
     },
 
-    // 🔥 TEXT SEND 🔥
     send: async () => {
         const input = document.getElementById('msg-input');
         if(!input) return;
@@ -542,7 +537,6 @@ window.Fluxgram.chat = {
         if(!text || !State.activeChatId) return;
         input.value = ''; UI.autoResize(input);
         
-        // Reset buttons to Mic
         document.getElementById('btn-send-text').classList.add('hidden');
         document.getElementById('btn-record-voice').classList.remove('hidden');
 
@@ -554,7 +548,6 @@ window.Fluxgram.chat = {
         } catch(e) { UI.toast(e.message, "error"); }
     },
 
-    // 🔥 IMAGE SEND 🔥
     sendImage: async (e) => {
         const file = e.target.files[0];
         if(!file) return;
@@ -563,7 +556,7 @@ window.Fluxgram.chat = {
             const reader = new FileReader();
             reader.readAsDataURL(file);
             reader.onloadend = async () => {
-                const compressedImg = await Utils.compressToBase64(reader.result, 600, 0.7); // 600px, 70% quality for chats
+                const compressedImg = await Utils.compressToBase64(reader.result, 600, 0.7);
                 await addDoc(collection(db, `chats/${State.activeChatId}/messages`), { image: compressedImg, senderId: State.currentUser.uid, timestamp: serverTimestamp() });
                 await setDoc(doc(db, "chats", State.activeChatId), { lastMessage: '📸 Image', lastSender: State.currentUser.uid, updatedAt: serverTimestamp() }, { merge: true });
                 UI.loader(false);
@@ -571,7 +564,6 @@ window.Fluxgram.chat = {
         } catch(err) { UI.toast("Image send failed", "error"); UI.loader(false); }
     },
 
-    // 🔥 VOICE RECORDING 🔥
     startVoice: async () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -600,7 +592,6 @@ window.Fluxgram.chat = {
         }
     },
 
-    // 🔥 EMOJI PANEL 🔥
     toggleEmoji: () => {
         document.getElementById('emoji-panel').classList.toggle('hidden');
     },
@@ -609,7 +600,7 @@ window.Fluxgram.chat = {
         input.value += emoji;
         document.getElementById('btn-send-text').classList.remove('hidden');
         document.getElementById('btn-record-voice').classList.add('hidden');
-        document.getElementById('emoji-panel').classList.add('hidden'); // auto hide after pick
+        document.getElementById('emoji-panel').classList.add('hidden');
     },
 
     openByUsername: async (username) => {
