@@ -2,28 +2,44 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Fluxgram | Chat</title>
     <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
-    <div class="header">
-        <button class="icon-btn" onclick="window.location.href='dashboard.html'">Back</button>
-        <div class="avatar" id="chatAvatar">?</div>
-        <div class="chat-header-info">
-            <div class="header-title" id="chatName" style="margin-left: 0;">Loading...</div>
-            <div class="chat-status" id="chatStatus">connecting...</div>
-        </div>
-    </div>
 
-    <div class="messages-container" id="messagesContainer">
-        </div>
-    
-    <div id="typingIndicator" class="typing-indicator hidden">User is typing...</div>
+    <div id="toast-container"></div>
 
-    <div class="chat-input-area">
-        <textarea id="msgInput" rows="1" placeholder="Message..." oninput="handleTyping()"></textarea>
-        <button class="send-btn" onclick="sendMessage()">Send</button>
+    <div class="app-container">
+        <div class="header">
+            <div class="chat-header-info" onclick="window.location.href='dashboard.html'">
+                <i class="fas fa-arrow-left" style="color:var(--text-muted); margin-right:10px;"></i>
+                <div class="avatar" id="chat-avatar"></div>
+                <div class="chat-header-text">
+                    <div class="chat-name" id="chat-name">Loading...</div>
+                    <div class="chat-status" id="chat-status">Connecting...</div>
+                </div>
+            </div>
+            <div style="display:flex;">
+                <button class="icon-btn" onclick="Fluxgram.ui.toast('Calling feature requires WebRTC signal server.')"><i class="fas fa-phone-alt"></i></button>
+            </div>
+        </div>
+
+        <div class="chat-bg">
+            <div class="messages-container" id="messages-container">
+                </div>
+            
+            <div id="typing-indicator" class="typing-indicator hidden">User is typing...</div>
+
+            <div class="input-area">
+                <button class="icon-btn" style="width:30px; height:30px;" onclick="Fluxgram.ui.toast('Media upload coming soon!')"><i class="fas fa-paperclip"></i></button>
+                <div class="input-wrapper">
+                    <textarea id="msg-input" class="msg-input" rows="1" placeholder="Message..."></textarea>
+                </div>
+                <button class="send-btn" onclick="Fluxgram.chat.send()"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
     </div>
 
     <script type="module" src="app.js"></script>
