@@ -1,5 +1,5 @@
 // ============================================================================
-// app.js - Core Application Logic (Optimized & Error-Proof with WebRTC)
+// app.js - Core Application Logic (With Groups, Channels & WebRTC)
 // ============================================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -21,20 +21,13 @@ const db = getFirestore(app);
 
 // --- 2. GLOBAL APP NAMESPACE ---
 window.Fluxgram = {
-    state: { currentUser: null, activeChatId: null, activeChatUser: null, unsubMessages: null, unsubChats: null, typingTimeout: null, callDocId: null },
-    ui: {},
-    auth: {},
-    dash: {},
-    chat: {},
-    call: {}
+    state: { currentUser: null, activeChatId: null, activeChatUser: null, activeChatData: null, unsubMessages: null, unsubChats: null, typingTimeout: null, callDocId: null },
+    ui: {}, auth: {}, dash: {}, chat: {}, call: {}
 };
 
 // --- 3. UI HELPERS ---
 window.Fluxgram.ui = {
-    loader: (show) => {
-        const l = document.getElementById('global-loader');
-        if(l) l.classList.toggle('hidden', !show);
-    },
+    loader: (show) => { const l = document.getElementById('global-loader'); if(l) l.classList.toggle('hidden', !show); },
     toast: (msg, type = 'success') => {
         const container = document.getElementById('toast-container');
         if(!container) return;
@@ -48,20 +41,12 @@ window.Fluxgram.ui = {
         const loginForm = document.getElementById('login-form');
         const signupForm = document.getElementById('signup-form');
         const resetForm = document.getElementById('reset-form');
-        
         if (loginForm) loginForm.classList.toggle('hidden', formType !== 'login');
         if (signupForm) signupForm.classList.toggle('hidden', formType !== 'signup');
         if (resetForm) resetForm.classList.toggle('hidden', formType !== 'reset');
     },
-    autoResize: (el) => {
-        if (!el) return;
-        el.style.height = 'auto';
-        el.style.height = (el.scrollHeight) + 'px';
-    },
-    getParam: (param) => {
-        const urlParams = new URLSearchParams(window.location.search);
-        return urlParams.get(param);
-    }
+    autoResize: (el) => { if (!el) return; el.style.height = 'auto'; el.style.height = (el.scrollHeight) + 'px'; },
+    getParam: (param) => { const urlParams = new URLSearchParams(window.location.search); return urlParams.get(param); }
 };
 
 const UI = window.Fluxgram.ui;
@@ -74,13 +59,9 @@ window.Fluxgram.auth = {
         if(!e || !p) return UI.toast("Enter email and password", "error");
         
         UI.loader(true);
-        try {
-            await signInWithEmailAndPassword(auth, e, p);
-        } catch (err) { 
-            UI.toast("Invalid credentials. Check email & password.", "error"); 
-        } finally {
-            UI.loader(false);
-        }
+        try { await signInWithEmailAndPassword(auth, e, p); } 
+        catch (err) { UI.toast("Invalid credentials. Check email & password.", "error"); } 
+        finally { UI.loader(false); }
     },
 
     signup: async () => {
@@ -99,16 +80,12 @@ window.Fluxgram.auth = {
             if(!snaps.empty) throw new Error("Username already taken.");
 
             const res = await createUserWithEmailAndPassword(auth, e, p);
-            
             await setDoc(doc(db, "users", res.user.uid), {
                 uid: res.user.uid, email: e, username: u, searchKey: searchKey, isOnline: true, lastSeen: serverTimestamp()
             });
             UI.toast("Account created successfully!");
-        } catch (err) { 
-            UI.toast(err.message, "error"); 
-        } finally {
-            UI.loader(false);
-        }
+        } catch (err) { UI.toast(err.message, "error"); } 
+        finally { UI.loader(false); }
     },
 
     reset: async () => {
@@ -131,13 +108,13 @@ window.Fluxgram.auth = {
 // --- 5. PRESENCE SYSTEM ---
 function updatePresence(isOnline) {
     if(auth.currentUser) {
-        setDoc(doc(db, "users", auth.currentUser.uid), { isOnline: isOnline, lastSeen: serverTimestamp() }, { merge: true }).catch(err => console.log("Presence update failed:", err));
+        setDoc(doc(db, "users", auth.currentUser.uid), { isOnline: isOnline, lastSeen: serverTimestamp() }, { merge: true }).catch(e => {});
     }
 }
 window.addEventListener('beforeunload', () => updatePresence(false));
 document.addEventListener('visibilitychange', () => { updatePresence(document.visibilityState === 'visible'); });
 
-// --- 6. AUTH STATE OBSERVER (Routing Guard) ---
+// --- 6. AUTH STATE OBSERVER ---
 onAuthStateChanged(auth, (user) => {
     const path = window.location.pathname;
     const State = window.Fluxgram.state;
@@ -151,10 +128,9 @@ onAuthStateChanged(auth, (user) => {
             window.location.replace('dashboard.html');
         } else if (path.endsWith('dashboard.html')) {
             window.Fluxgram.dash.loadChats();
-            window.Fluxgram.call.listenForCalls(); // Start listening for incoming calls
         } else if (path.endsWith('chat.html')) {
             window.Fluxgram.chat.init();
-            window.Fluxgram.call.listenForCalls(); // Listen here too
+            window.Fluxgram.call.listenForCalls();
         }
     } else {
         State.currentUser = null;
@@ -164,7 +140,7 @@ onAuthStateChanged(auth, (user) => {
     }
 });
 
-// --- 7. DASHBOARD LOGIC ---
+// --- 7. DASHBOARD LOGIC (Groups & Channels) ---
 window.Fluxgram.dash = {
     search: async () => {
         const term = document.getElementById('search-input').value.trim().toLowerCase();
@@ -203,10 +179,53 @@ window.Fluxgram.dash = {
                 `;
             });
             if(resultsBox.innerHTML === '') resultsBox.innerHTML = `<div style="padding:15px; text-align:center; color:var(--text-muted);">No users found</div>`;
-        } catch(e) { 
-            console.error("Search Error:", e); 
-            resultsBox.innerHTML = `<div style="padding:15px; text-align:center; color:var(--danger);">Search failed. Please check database rules.</div>`;
+        } catch(e) { console.error(e); }
+    },
+
+    // Group/Channel Creation UI Toggle
+    setCreateType: (type) => {
+        document.getElementById('create-type').value = type;
+        const btnGroup = document.getElementById('btn-type-group');
+        const btnChannel = document.getElementById('btn-type-channel');
+        
+        if (type === 'group') {
+            btnGroup.style.background = 'var(--primary)'; btnGroup.style.color = 'white'; btnGroup.style.border = 'none';
+            btnChannel.style.background = 'var(--bg-base)'; btnChannel.style.color = 'var(--text-muted)'; btnChannel.style.border = '1px solid var(--divider)';
+        } else {
+            btnChannel.style.background = 'var(--primary)'; btnChannel.style.color = 'white'; btnChannel.style.border = 'none';
+            btnGroup.style.background = 'var(--bg-base)'; btnGroup.style.color = 'var(--text-muted)'; btnGroup.style.border = '1px solid var(--divider)';
         }
+    },
+
+    // Group/Channel Creation Engine
+    createGroupOrChannel: async () => {
+        const type = document.getElementById('create-type').value;
+        const name = document.getElementById('create-name').value.trim();
+        const desc = document.getElementById('create-desc').value.trim();
+        
+        if(!name) return UI.toast("Name is required", "error");
+
+        UI.loader(true);
+        try {
+            const newRef = await addDoc(collection(db, "chats"), {
+                type: type, // 'group' or 'channel'
+                name: name,
+                desc: desc,
+                admin: window.Fluxgram.state.currentUser.uid,
+                members: [window.Fluxgram.state.currentUser.uid], // Admin is first member
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+                lastMessage: `Created ${type} "${name}"`,
+                unreadCount: 0
+            });
+            
+            document.getElementById('create-modal').classList.add('hidden');
+            UI.toast(`${type === 'group' ? 'Group' : 'Channel'} created successfully!`, "success");
+            window.location.href = `chat.html?chatId=${newRef.id}`;
+        } catch(e) {
+            UI.toast(e.message, "error");
+        }
+        UI.loader(false);
     },
 
     loadChats: () => {
@@ -220,28 +239,45 @@ window.Fluxgram.dash = {
             list.innerHTML = '';
             
             if(snapshot.empty) {
-                list.innerHTML = `<div style="padding:30px; text-align:center; color:var(--text-muted);">No chats yet. Search a user to start.</div>`;
+                list.innerHTML = `<div style="padding:30px; text-align:center; color:var(--text-muted);">No chats yet. Search a user or create a group to start.</div>`;
                 return;
             }
 
             const chatDocs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            chatDocs.sort((a, b) => {
-                const timeA = a.updatedAt ? a.updatedAt.toMillis() : 0;
-                const timeB = b.updatedAt ? b.updatedAt.toMillis() : 0;
-                return timeB - timeA;
-            });
+            chatDocs.sort((a, b) => (b.updatedAt?.toMillis() || 0) - (a.updatedAt?.toMillis() || 0));
 
             for (const data of chatDocs) {
+                const timeStr = data.updatedAt ? data.updatedAt.toDate().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '';
+                const unread = (data.lastSender !== State.currentUser.uid && data.unreadCount > 0) ? `<div class="unread-badge">${data.unreadCount}</div>` : '';
+
+                // Handle Groups & Channels display
+                if (data.type === 'group' || data.type === 'channel') {
+                    const icon = data.type === 'channel' ? 'fa-bullhorn' : 'fa-users';
+                    list.innerHTML += `
+                        <div class="chat-item" onclick="window.location.href='chat.html?chatId=${data.id}'">
+                            <div class="avatar" style="background:var(--accent); color:#000;">${data.name.charAt(0).toUpperCase()}</div>
+                            <div class="chat-info">
+                                <div class="c-name-row">
+                                    <div class="c-name">${data.name} <i class="fas ${icon}" style="font-size:0.8rem; color:var(--text-muted); margin-left:5px;"></i></div>
+                                    <div class="c-time">${timeStr}</div>
+                                </div>
+                                <div class="c-msg-row">
+                                    <div class="c-msg">${data.lastMessage || 'No messages'}</div>
+                                    ${unread}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    continue;
+                }
+
+                // Handle Direct Chats
                 const otherUid = data.members.find(id => id !== State.currentUser.uid);
-                
                 try {
                     const otherUserDoc = await getDoc(doc(db, "users", otherUid));
                     if(!otherUserDoc.exists()) continue;
                     const otherUser = otherUserDoc.data();
-
-                    const timeStr = data.updatedAt ? data.updatedAt.toDate().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '';
                     const isTyping = data.typing && data.typing.includes(otherUid);
-                    const unread = (data.lastSender !== State.currentUser.uid && data.unreadCount > 0) ? `<div class="unread-badge">${data.unreadCount}</div>` : '';
 
                     list.innerHTML += `
                         <div class="chat-item" onclick="window.location.href='chat.html?uid=${otherUid}'">
@@ -258,68 +294,111 @@ window.Fluxgram.dash = {
                             </div>
                         </div>
                     `;
-                } catch(err) {
-                    console.error("Error loading user profile for chat list:", err);
-                }
+                } catch(err) { console.error(err); }
             }
         });
     }
 };
 
-// --- 8. CHAT LOGIC ---
+// --- 8. CHAT LOGIC (Messages & Channel Restrictions) ---
 window.Fluxgram.chat = {
     init: async () => {
         const State = window.Fluxgram.state;
-        const otherUid = UI.getParam('uid');
-        if(!otherUid) return window.location.replace('dashboard.html');
+        const otherUid = UI.getParam('uid');       // For direct chats
+        const existingChatId = UI.getParam('chatId'); // For groups/channels
 
-        const chatId = State.currentUser.uid < otherUid ? `${State.currentUser.uid}_${otherUid}` : `${otherUid}_${State.currentUser.uid}`;
-        State.activeChatId = chatId;
+        if(!otherUid && !existingChatId) return window.location.replace('dashboard.html');
 
         try {
-            const chatRef = doc(db, "chats", chatId);
-            const chatSnap = await getDoc(chatRef);
-            if(!chatSnap.exists()){
-                await setDoc(chatRef, { members: [State.currentUser.uid, otherUid], updatedAt: serverTimestamp(), lastMessage: "Chat created", unreadCount: 0 });
+            if (existingChatId) {
+                // ==========================================
+                // GROUP / CHANNEL INITIALIZATION
+                // ==========================================
+                State.activeChatId = existingChatId;
+                const chatRef = doc(db, "chats", existingChatId);
+                
+                onSnapshot(chatRef, (d) => {
+                    if(d.exists()) {
+                        const data = d.data();
+                        State.activeChatData = data;
+                        document.getElementById('chat-name').innerText = data.name;
+                        document.getElementById('chat-avatar').innerText = data.name.charAt(0).toUpperCase();
+                        
+                        const typeStr = data.type === 'channel' ? 'Channel' : 'Group';
+                        document.getElementById('chat-status').innerText = `${data.members.length} members • ${typeStr}`;
+                        document.getElementById('chat-status').style.color = 'var(--text-muted)';
+                        
+                        // Hide call buttons for groups
+                        const callAudio = document.getElementById('btn-call-audio');
+                        const callVideo = document.getElementById('btn-call-video');
+                        if(callAudio) callAudio.classList.add('hidden');
+                        if(callVideo) callVideo.classList.add('hidden');
+
+                        // Show Add Member button if Admin
+                        const isAdmin = data.admin === State.currentUser.uid;
+                        const addBtn = document.getElementById('btn-add-member');
+                        if(addBtn) {
+                            if (isAdmin) addBtn.classList.remove('hidden');
+                            else addBtn.classList.add('hidden');
+                        }
+
+                        // Channel restrictions: Only admin can type
+                        const inputArea = document.getElementById('input-area');
+                        if(data.type === 'channel' && !isAdmin) {
+                            inputArea.classList.add('hidden');
+                        } else {
+                            inputArea.classList.remove('hidden');
+                        }
+                    } else {
+                        window.location.replace('dashboard.html');
+                    }
+                });
+
             } else {
-                if(chatSnap.data().lastSender !== State.currentUser.uid) {
-                    await updateDoc(chatRef, { unreadCount: 0 });
-                }
-            }
+                // ==========================================
+                // DIRECT CHAT INITIALIZATION
+                // ==========================================
+                const chatId = State.currentUser.uid < otherUid ? `${State.currentUser.uid}_${otherUid}` : `${otherUid}_${State.currentUser.uid}`;
+                State.activeChatId = chatId;
 
-            onSnapshot(doc(db, "users", otherUid), (d) => {
-                if(d.exists()) {
-                    const u = d.data();
-                    State.activeChatUser = u;
-                    const nameEl = document.getElementById('chat-name');
-                    const avatarEl = document.getElementById('chat-avatar');
-                    const statusEl = document.getElementById('chat-status');
-
-                    if(nameEl) nameEl.innerText = u.username;
-                    if(avatarEl) avatarEl.innerText = u.username.charAt(0).toUpperCase();
-                    if(statusEl) {
-                        statusEl.innerText = u.isOnline ? 'Online' : 'Offline';
-                        statusEl.classList.toggle('online', u.isOnline);
+                const chatRef = doc(db, "chats", chatId);
+                const chatSnap = await getDoc(chatRef);
+                if(!chatSnap.exists()){
+                    await setDoc(chatRef, { type: 'direct', members: [State.currentUser.uid, otherUid], updatedAt: serverTimestamp(), lastMessage: "Chat created", unreadCount: 0 });
+                } else {
+                    if(chatSnap.data().lastSender !== State.currentUser.uid) {
+                        await updateDoc(chatRef, { unreadCount: 0 });
                     }
                 }
-            });
 
-            onSnapshot(doc(db, "chats", chatId), (d) => {
-                const typingEl = document.getElementById('typing-indicator');
-                if(!typingEl) return;
-                
-                if(d.exists() && d.data().typing && d.data().typing.includes(otherUid)) {
-                    typingEl.classList.remove('hidden');
-                } else {
-                    typingEl.classList.add('hidden');
-                }
-            });
+                // Listen to remote user presence
+                onSnapshot(doc(db, "users", otherUid), (d) => {
+                    if(d.exists()) {
+                        const u = d.data();
+                        State.activeChatUser = u;
+                        document.getElementById('chat-name').innerText = u.username;
+                        document.getElementById('chat-avatar').innerText = u.username.charAt(0).toUpperCase();
+                        const statusEl = document.getElementById('chat-status');
+                        statusEl.innerText = u.isOnline ? 'Online' : 'Offline';
+                        statusEl.style.color = u.isOnline ? 'var(--accent)' : 'var(--text-muted)';
+                    }
+                });
 
+                // Listen for typing indicator
+                onSnapshot(doc(db, "chats", chatId), (d) => {
+                    const typingEl = document.getElementById('typing-indicator');
+                    if(!typingEl) return;
+                    if(d.exists() && d.data().typing && d.data().typing.includes(otherUid)) typingEl.classList.remove('hidden');
+                    else typingEl.classList.add('hidden');
+                });
+            }
+
+            // Keyboard listeners
             const msgInput = document.getElementById('msg-input');
             if(msgInput) {
                 msgInput.addEventListener('input', () => {
                     UI.autoResize(msgInput);
-                    window.Fluxgram.chat.setTyping();
+                    if(!existingChatId) window.Fluxgram.chat.setTyping();
                 });
                 msgInput.addEventListener('keypress', (e) => {
                     if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); window.Fluxgram.chat.send(); }
@@ -329,8 +408,8 @@ window.Fluxgram.chat = {
             window.Fluxgram.chat.loadMessages();
 
         } catch(error) {
-            console.error("Chat Init Error:", error);
-            UI.toast("Failed to initialize chat", "error");
+            console.error("Init Error:", error);
+            UI.toast("Failed to load chat", "error");
         }
     },
 
@@ -348,9 +427,15 @@ window.Fluxgram.chat = {
                 const isMe = msg.senderId === State.currentUser.uid;
                 const timeStr = msg.timestamp ? msg.timestamp.toDate().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '';
                 
+                // Show sender name in group/channels if it's not me
+                const senderNameHTML = (!isMe && State.activeChatData && (State.activeChatData.type === 'group' || State.activeChatData.type === 'channel')) 
+                    ? `<div style="font-size:0.75rem; color:var(--accent); font-weight:bold; margin-bottom:3px;">User ID: ${msg.senderId.substring(0,5)}</div>` 
+                    : '';
+
                 container.innerHTML += `
                     <div class="msg-row ${isMe ? 'msg-tx' : 'msg-rx'}">
                         <div class="msg-bubble">
+                            ${senderNameHTML}
                             ${msg.text.replace(/\n/g, '<br>')}
                             <div class="msg-meta">${timeStr} ${isMe ? '<i class="fas fa-check-double" style="color:var(--accent);"></i>' : ''}</div>
                         </div>
@@ -388,10 +473,7 @@ window.Fluxgram.chat = {
                 unreadCount: unread + 1,
                 typing: [] 
             }, { merge: true });
-        } catch(error) {
-            console.error("Send Message Error:", error);
-            UI.toast("Failed to send message", "error");
-        }
+        } catch(error) { UI.toast("Failed to send message", "error"); }
     },
 
     setTyping: () => {
@@ -403,6 +485,40 @@ window.Fluxgram.chat = {
         State.typingTimeout = setTimeout(() => {
             setDoc(doc(db, "chats", State.activeChatId), { typing: [] }, { merge: true });
         }, 1500);
+    },
+
+    // Add Member to Group/Channel Engine
+    promptAddMember: async () => {
+        const username = prompt("Enter exact username of the person to add (e.g. john_doe):");
+        if(!username) return;
+        
+        UI.loader(true);
+        try {
+            const State = window.Fluxgram.state;
+            const q = query(collection(db, "users"), where("searchKey", "==", username.toLowerCase()));
+            const snaps = await getDocs(q);
+            
+            if(snaps.empty) {
+                UI.toast("User not found in database", "error");
+                UI.loader(false);
+                return;
+            }
+            
+            const newMemberUid = snaps.docs[0].id;
+            const chatRef = doc(db, "chats", State.activeChatId);
+            const chatSnap = await getDoc(chatRef);
+            
+            if(chatSnap.data().members.includes(newMemberUid)) {
+                UI.toast("User is already in this group!", "error");
+            } else {
+                const updatedMembers = [...chatSnap.data().members, newMemberUid];
+                await updateDoc(chatRef, { members: updatedMembers });
+                UI.toast("Member added successfully!", "success");
+            }
+        } catch(e) {
+            UI.toast("Failed to add member", "error");
+        }
+        UI.loader(false);
     }
 };
 
@@ -419,9 +535,8 @@ window.Fluxgram.call = {
         const callDoc = doc(collection(db, "calls"));
         State.callDocId = callDoc.id;
 
-        // Display UI
         const callScreen = document.getElementById('call-screen');
-        if(!callScreen) return; // Ensure we are on chat.html
+        if(!callScreen) return; 
         
         callScreen.classList.remove('hidden');
         document.getElementById('callName').innerText = State.activeChatUser.username;
@@ -430,7 +545,6 @@ window.Fluxgram.call = {
         document.getElementById('call-controls-incoming').classList.add('hidden');
 
         try {
-            // Request Camera/Mic Access
             localStream = await navigator.mediaDevices.getUserMedia({ video: type === 'video', audio: true });
             document.getElementById('localVideo').srcObject = localStream;
 
@@ -447,7 +561,6 @@ window.Fluxgram.call = {
                 if(event.candidate) addDoc(offerCandidates, event.candidate.toJSON());
             };
 
-            // Create Offer
             const offerDescription = await pc.createOffer();
             await pc.setLocalDescription(offerDescription);
 
@@ -459,7 +572,6 @@ window.Fluxgram.call = {
                 status: 'ringing'
             });
 
-            // Listen for Answer
             onSnapshot(callDoc, (snapshot) => {
                 const data = snapshot.data();
                 if (!pc.currentRemoteDescription && data?.answer) {
@@ -469,7 +581,6 @@ window.Fluxgram.call = {
                 if(data?.status === 'ended') window.Fluxgram.call.endCallLocal();
             });
 
-            // Listen for Remote ICE
             onSnapshot(collection(callDoc, 'answerCandidates'), (snapshot) => {
                 snapshot.docChanges().forEach((change) => {
                     if (change.type === 'added') pc.addIceCandidate(new RTCIceCandidate(change.doc.data()));
@@ -485,7 +596,7 @@ window.Fluxgram.call = {
     listenForCalls: () => {
         const State = window.Fluxgram.state;
         const callScreen = document.getElementById('call-screen');
-        if(!callScreen) return; // Prevent errors on dashboard.html if call overlay is missing
+        if(!callScreen) return; 
         
         const q = query(collection(db, "calls"), where("receiverId", "==", State.currentUser.uid), where("status", "==", "ringing"));
         onSnapshot(q, (snapshot) => {
@@ -558,9 +669,7 @@ window.Fluxgram.call = {
 
     endCall: async () => {
         const State = window.Fluxgram.state;
-        if(State.callDocId) {
-            await updateDoc(doc(db, "calls", State.callDocId), { status: 'ended' });
-        }
+        if(State.callDocId) { await updateDoc(doc(db, "calls", State.callDocId), { status: 'ended' }); }
         window.Fluxgram.call.endCallLocal();
     },
 
@@ -573,7 +682,6 @@ window.Fluxgram.call = {
         
         const callScreen = document.getElementById('call-screen');
         if(callScreen) callScreen.classList.add('hidden');
-        
         State.callDocId = null;
     },
 
