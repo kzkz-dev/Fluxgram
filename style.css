@@ -317,3 +317,41 @@ button, input, textarea { font-family: inherit; outline: none; border: none; }
 #emoji-panel span:hover { transform: scale(1.2); }
 .recording { color: var(--danger) !important; animation: pulse 1s infinite; }
 @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+
+/* --- PREMIUM PROFILE VIEW STYLES --- */
+.profile-action-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: 0.2s;
+    flex: 1;
+}
+.profile-action-btn:hover { transform: translateY(-3px); }
+.profile-action-btn .icon {
+    width: 50px;
+    height: 50px;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 16px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    font-size: 1.3rem;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+.profile-action-btn span {
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+.premium-gradient {
+    background: linear-gradient(135deg, #FF7A8A 0%, #FF9966 100%);
+    position: relative;
+    padding: 70px 20px 25px;
+    text-align: center;
+}
