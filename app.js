@@ -1,16 +1,15 @@
 // ============================================================================
-// app.js - Fluxgram Engine (Storage-Free Base64 Image Edition)
+// app.js - Fluxgram Engine (Storage-Free Base64 + Detailed Error Handling)
 // ============================================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateEmail, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, getDocs, collection, addDoc, updateDoc, deleteDoc, onSnapshot, query, where, orderBy, serverTimestamp, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-// NO FIREBASE STORAGE NEEDED ANYMORE!
 
 const firebaseConfig = {
     apiKey: "AIzaSyCsbZ1fqDivv8OyUiTcaEMcpZlJlM1TI6Y",
     authDomain: "fluxgram-87009.firebaseapp.com",
     projectId: "fluxgram-87009",
-    storageBucket: "fluxgram-87009.firebasestorage.app", // Keeping for config completeness
+    storageBucket: "fluxgram-87009.firebasestorage.app",
     messagingSenderId: "698836385253",
     appId: "1:698836385253:web:c40e67ee9006cff536830c"
 };
@@ -52,7 +51,6 @@ window.Fluxgram.utils = {
         if(photoURL && photoURL.length > 10) return `<img src="${photoURL}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;" class="${sizeClass}">`;
         return `<span class="${sizeClass}">${(fallbackName||'U').charAt(0).toUpperCase()}</span>`;
     },
-    // 🔥 THE MAGIC COMPRESSOR: Converts Image to Tiny Text Code 🔥
     compressToBase64: (dataUrl, maxWidth = 150, quality = 0.6) => {
         return new Promise((resolve) => {
             const img = new Image();
@@ -64,7 +62,7 @@ window.Fluxgram.utils = {
                 canvas.height = img.height * scaleSize;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                resolve(canvas.toDataURL('image/jpeg', quality)); // Tiny Base64 String
+                resolve(canvas.toDataURL('image/jpeg', quality));
             };
             img.onerror = () => resolve(dataUrl);
         });
@@ -195,7 +193,7 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
-// --- PROFILE & SETTINGS MANAGER (DIRECT DATABASE IMAGE SAVE) ---
+// --- PROFILE & SETTINGS MANAGER ---
 window.Fluxgram.profile = {
     previewImage: (event, imgId, textId) => {
         const file = event.target.files[0];
@@ -242,9 +240,8 @@ window.Fluxgram.profile = {
             
             let finalPhotoURL = State.userData.photoURL !== undefined ? State.userData.photoURL : null;
             
-            // MAGIC: Compress Base64 and Save Directly to Firestore Document!
             if(previewImg && !previewImg.classList.contains('hidden') && previewImg.src.startsWith('data:')) {
-                finalPhotoURL = await Utils.compressToBase64(previewImg.src, 150, 0.6); // 150px, low size
+                finalPhotoURL = await Utils.compressToBase64(previewImg.src, 150, 0.6); 
             }
 
             await setDoc(doc(db, "users", State.currentUser.uid), { name: n, username: u, searchKey: u.toLowerCase(), bio: b, photoURL: finalPhotoURL }, { merge: true });
@@ -257,14 +254,33 @@ window.Fluxgram.profile = {
         const pass = document.getElementById('email-change-password').value;
         const newEmail = document.getElementById('email-change-new').value.trim();
         if(!pass || !newEmail) return UI.toast("Enter password and new email", "error");
+        
         UI.loader(true);
         try {
             const credential = EmailAuthProvider.credential(State.currentUser.email, pass);
             await reauthenticateWithCredential(auth.currentUser, credential);
             await updateEmail(auth.currentUser, newEmail);
             await setDoc(doc(db, "users", State.currentUser.uid), { email: newEmail }, { merge: true });
-            document.getElementById('email-change-modal').classList.add('hidden'); document.getElementById('display-email').innerText = newEmail; UI.toast("Email updated successfully!", "success");
-        } catch(e) { UI.toast("Error: Incorrect password or invalid email.", "error"); } finally { UI.loader(false); }
+            
+            document.getElementById('email-change-modal').classList.add('hidden'); 
+            document.getElementById('display-email').innerText = newEmail; 
+            UI.toast("Email updated successfully!", "success");
+            
+            document.getElementById('email-change-password').value = '';
+            document.getElementById('email-change-new').value = '';
+
+        } catch(e) { 
+            console.error("Email Change Error:", e);
+            let errorMsg = e.message;
+            if (e.code === 'auth/email-already-in-use') {
+                errorMsg = "This email is already registered to another account!";
+            } else if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
+                errorMsg = "Incorrect current password!";
+            }
+            UI.toast(errorMsg, "error"); 
+        } finally { 
+            UI.loader(false); 
+        }
     },
 
     openChatEdit: () => {
@@ -295,7 +311,6 @@ window.Fluxgram.profile = {
             
             let finalPhotoURL = State.activeChatData.photoURL !== undefined ? State.activeChatData.photoURL : null;
             
-            // MAGIC: Compress Base64 and Save Directly to Firestore Document!
             if(previewImg && !previewImg.classList.contains('hidden') && previewImg.src.startsWith('data:')) {
                 finalPhotoURL = await Utils.compressToBase64(previewImg.src, 150, 0.6);
             }
