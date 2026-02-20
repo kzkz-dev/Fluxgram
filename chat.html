@@ -105,7 +105,39 @@
             <div id="call-controls-active" class="hidden" style="display:flex; gap:30px; pointer-events: all;"><div class="call-btn" onclick="Fluxgram.call.endCall()" style="background: var(--danger); width:65px; height:65px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.5rem; color:white; cursor:pointer;"><i class="fas fa-phone-slash"></i></div></div>
             <div id="call-controls-incoming" class="hidden" style="display:flex; gap:50px; pointer-events: all;"><div class="call-btn" onclick="Fluxgram.call.endCall()" style="background: var(--danger); width:65px; height:65px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.5rem; color:white; cursor:pointer;"><i class="fas fa-phone-slash"></i></div><div class="call-btn" onclick="Fluxgram.call.acceptCall()" style="background: var(--success); width:65px; height:65px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.5rem; color:white; cursor:pointer;"><i class="fas fa-phone"></i></div></div>
         </div>
+ 
+<div id="edit-chat-modal" class="hidden" style="position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:9500; display:flex; align-items:center; justify-content:center; padding:20px; backdrop-filter:blur(3px);">
+        <div style="background:var(--bg-surface); padding:25px; border-radius:16px; width:100%; max-width:350px;">
+            <h2 style="margin-bottom:15px; color:white; text-align:center;">Edit Group/Channel</h2>
+            
+            <div class="avatar-upload-wrap" style="padding:10px 0; background:transparent;">
+                <div class="avatar-upload-circle" onclick="document.getElementById('chat-avatar-input').click()">
+                    <span id="chat-avatar-text">G</span>
+                    <img id="chat-avatar-preview" src="" class="hidden">
+                    <div class="avatar-camera-icon"><i class="fas fa-camera"></i></div>
+                </div>
+                <input type="file" id="chat-avatar-input" accept="image/*" class="hidden" onchange="Fluxgram.profile.previewImage(event, 'chat-avatar-preview', 'chat-avatar-text')">
+            </div>
+
+            <label style="color:var(--accent); font-size:0.85rem; margin-bottom:5px; display:block;">Name</label>
+            <input type="text" id="edit-chat-name" class="auth-input" style="padding:10px; margin-bottom:10px;">
+            
+            <label style="color:var(--accent); font-size:0.85rem; margin-bottom:5px; display:block;">@username</label>
+            <input type="text" id="edit-chat-username" class="auth-input" style="padding:10px; margin-bottom:10px;">
+            
+            <label style="color:var(--accent); font-size:0.85rem; margin-bottom:5px; display:block;">Description</label>
+            <textarea id="edit-chat-desc" class="auth-input" rows="2" style="padding:10px; margin-bottom:15px; resize:none;"></textarea>
+            
+            <button onclick="Fluxgram.profile.deleteChat()" style="width:100%; padding:10px; background:rgba(255,59,48,0.1); color:var(--danger); border:1px solid var(--danger); border-radius:8px; font-weight:bold; margin-bottom: 10px;"><i class="fas fa-trash"></i> Delete Chat</button>
+
+            <div style="display:flex; gap:10px;">
+                <button onclick="document.getElementById('edit-chat-modal').classList.add('hidden')" style="flex:1; padding:10px; background:transparent; color:var(--text-muted); border:1px solid var(--divider); border-radius:8px;">Cancel</button>
+                <button onclick="Fluxgram.profile.saveChatEdit()" style="flex:1; padding:10px; background:var(--primary); color:white; border-radius:8px; font-weight:bold;">Save</button>
+            </div>
+        </div>
     </div>
+
+   </div>
 
     <script type="module" src="app.js"></script>
 </body>
