@@ -16,7 +16,7 @@
         <div class="header">
             <div class="header-title" style="color:var(--primary); font-weight:800; font-family: 'Outfit'; font-size:1.5rem;"><i class="fas fa-bolt"></i> Fluxgram</div>
             <div style="display:flex; gap:5px;">
-                <button class="icon-btn" onclick="Fluxgram.profile.openUserEdit()"><i class="fas fa-user-edit"></i></button>
+                <button class="icon-btn" onclick="Fluxgram.profile.openUserEdit()"><i class="fas fa-user-circle"></i></button>
                 <button class="icon-btn" onclick="document.getElementById('create-modal').classList.remove('hidden')"><i class="fas fa-users"></i></button>
                 <button class="icon-btn" onclick="Fluxgram.auth.logout()"><i class="fas fa-sign-out-alt"></i></button>
             </div>
@@ -31,49 +31,99 @@
 
         <div class="scroll-area">
             <div id="search-results" class="hidden" style="border-bottom: 2px solid var(--divider);"></div>
-            <div id="chat-list">
-                <div style="padding:20px; text-align:center;"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
-            </div>
+            <div id="chat-list"><div style="padding:20px; text-align:center;"><i class="fas fa-spinner fa-spin"></i> Loading...</div></div>
         </div>
     </div>
 
     <div id="create-modal" class="hidden" style="position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:9000; display:flex; align-items:center; justify-content:center; padding:20px; backdrop-filter:blur(3px);">
-        <div style="background:var(--bg-surface); padding:25px; border-radius:16px; width:100%; max-width:350px; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
-            <h2 style="margin-bottom:20px; color:white; text-align:center; font-weight:500;">Create New</h2>
+        <div style="background:var(--bg-surface); padding:25px; border-radius:16px; width:100%; max-width:350px;">
+            <h2 style="margin-bottom:15px; color:white; text-align:center;">Create New</h2>
             
+            <div class="avatar-upload-wrap" style="padding:10px 0;">
+                <div class="avatar-upload-circle" onclick="document.getElementById('create-avatar-input').click()">
+                    <span id="create-avatar-text">G</span>
+                    <img id="create-avatar-preview" src="" class="hidden">
+                    <div class="avatar-camera-icon"><i class="fas fa-camera"></i></div>
+                </div>
+                <input type="file" id="create-avatar-input" accept="image/*" class="hidden" onchange="Fluxgram.profile.previewImage(event, 'create-avatar-preview', 'create-avatar-text')">
+            </div>
+
             <div style="display:flex; gap:10px; margin-bottom:15px;">
-                <button id="btn-type-group" onclick="Fluxgram.dash.setCreateType('group')" style="flex:1; padding:10px; background:var(--primary); color:white; border-radius:8px; font-weight:bold; transition:0.2s;">Group</button>
-                <button id="btn-type-channel" onclick="Fluxgram.dash.setCreateType('channel')" style="flex:1; padding:10px; background:var(--bg-base); color:var(--text-muted); border-radius:8px; border:1px solid var(--divider); transition:0.2s;">Channel</button>
+                <button id="btn-type-group" onclick="Fluxgram.dash.setCreateType('group')" style="flex:1; padding:10px; background:var(--primary); color:white; border-radius:8px;">Group</button>
+                <button id="btn-type-channel" onclick="Fluxgram.dash.setCreateType('channel')" style="flex:1; padding:10px; background:var(--bg-base); color:var(--text-muted); border-radius:8px; border:1px solid var(--divider);">Channel</button>
             </div>
             <input type="hidden" id="create-type" value="group">
             
-            <input type="text" id="create-name" class="auth-input" style="padding:12px; margin-bottom:10px;" placeholder="Name (e.g. Flux Devs)">
-            <input type="text" id="create-username" class="auth-input" style="padding:12px; margin-bottom:10px;" placeholder="Public @username (Min 6 chars)">
-            <textarea id="create-desc" class="auth-input" rows="2" style="padding:12px; margin-bottom:20px; resize:none;" placeholder="Description (Optional)"></textarea>
+            <input type="text" id="create-name" class="auth-input" style="padding:10px; margin-bottom:10px;" placeholder="Name (e.g. Flux Devs)">
+            <input type="text" id="create-username" class="auth-input" style="padding:10px; margin-bottom:10px;" placeholder="Public @username">
+            <textarea id="create-desc" class="auth-input" rows="2" style="padding:10px; margin-bottom:20px; resize:none;" placeholder="Description"></textarea>
             
             <div style="display:flex; gap:15px;">
-                <button onclick="document.getElementById('create-modal').classList.add('hidden')" style="flex:1; padding:12px; background:transparent; color:var(--text-muted); border:1px solid var(--divider); border-radius:8px; cursor:pointer;">Cancel</button>
-                <button onclick="Fluxgram.dash.createGroupOrChannel()" style="flex:1; padding:12px; background:var(--accent); color:#000; border-radius:8px; font-weight:bold; cursor:pointer;">Create</button>
+                <button onclick="document.getElementById('create-modal').classList.add('hidden')" style="flex:1; padding:10px; background:transparent; color:var(--text-muted); border:1px solid var(--divider); border-radius:8px;">Cancel</button>
+                <button onclick="Fluxgram.dash.createGroupOrChannel()" style="flex:1; padding:10px; background:var(--accent); color:#000; border-radius:8px; font-weight:bold;">Create</button>
             </div>
         </div>
     </div>
 
-    <div id="edit-user-modal" class="hidden" style="position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:9000; display:flex; align-items:center; justify-content:center; padding:20px; backdrop-filter:blur(3px);">
-        <div style="background:var(--bg-surface); padding:25px; border-radius:16px; width:100%; max-width:350px; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
-            <h2 style="margin-bottom:20px; color:white; text-align:center; font-weight:500;">Edit Profile</h2>
+    <div id="edit-user-modal" class="hidden" style="position:fixed; inset:0; background:var(--bg-base); z-index:9500; display:flex; flex-direction:column;">
+        <div class="header">
+            <button class="icon-btn" onclick="document.getElementById('edit-user-modal').classList.add('hidden')"><i class="fas fa-arrow-left"></i></button>
+            <div class="header-title">Account</div>
+            <button class="icon-btn" onclick="Fluxgram.profile.saveUserEdit()" style="color:var(--accent);"><i class="fas fa-check"></i></button>
+        </div>
+        
+        <div style="flex:1; overflow-y:auto; background: #1c242f;">
+            <div class="avatar-upload-wrap">
+                <div class="avatar-upload-circle" onclick="document.getElementById('user-avatar-input').click()">
+                    <span id="user-avatar-text">U</span>
+                    <img id="user-avatar-preview" src="" class="hidden">
+                    <div class="avatar-camera-icon"><i class="fas fa-camera"></i></div>
+                </div>
+                <input type="file" id="user-avatar-input" accept="image/*" class="hidden" onchange="Fluxgram.profile.previewImage(event, 'user-avatar-preview', 'user-avatar-text')">
+            </div>
+
+            <div class="tg-section">
+                <div class="tg-section-title">Your Info</div>
+                <div class="tg-item" onclick="document.getElementById('email-change-modal').classList.remove('hidden')">
+                    <div class="tg-icon"><i class="fas fa-envelope"></i></div>
+                    <div>
+                        <span class="tg-text-main" id="display-email">loading...</span>
+                        <span class="tg-text-sub">Tap to change email address</span>
+                    </div>
+                </div>
+                <div class="tg-item">
+                    <div class="tg-icon"><i class="fas fa-at"></i></div>
+                    <div style="width:100%;">
+                        <input type="text" id="edit-user-username" class="tg-input" placeholder="Username" style="padding:0;">
+                        <span class="tg-text-sub">Username</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tg-section">
+                <div class="tg-section-title">Your Name</div>
+                <input type="text" id="edit-user-name" class="tg-input tg-input-border" placeholder="Full Name">
+            </div>
+
+            <div class="tg-section">
+                <div class="tg-section-title">Your Bio</div>
+                <textarea id="edit-user-bio" class="tg-input" rows="3" placeholder="Add a few lines about yourself"></textarea>
+                <div style="padding: 0 20px 10px; font-size: 0.8rem; color: var(--text-muted);">Any details such as age, occupation or city.</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="email-change-modal" class="hidden" style="position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:9900; display:flex; align-items:center; justify-content:center; padding:20px;">
+        <div style="background:var(--bg-surface); padding:25px; border-radius:16px; width:100%; max-width:350px;">
+            <h3 style="margin-bottom:10px; color:white;">Change Email</h3>
+            <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:15px;">For security, please enter your current password to set a new email.</p>
             
-            <label style="color:var(--accent); font-size:0.85rem; margin-bottom:5px; display:block;">Full Name</label>
-            <input type="text" id="edit-user-name" class="auth-input" style="padding:12px; margin-bottom:15px;">
+            <input type="password" id="email-change-password" class="auth-input" placeholder="Current Password" style="padding:12px; margin-bottom:10px;">
+            <input type="email" id="email-change-new" class="auth-input" placeholder="New Email Address" style="padding:12px; margin-bottom:20px;">
             
-            <label style="color:var(--accent); font-size:0.85rem; margin-bottom:5px; display:block;">@username</label>
-            <input type="text" id="edit-user-username" class="auth-input" style="padding:12px; margin-bottom:15px;">
-            
-            <label style="color:var(--accent); font-size:0.85rem; margin-bottom:5px; display:block;">Bio</label>
-            <textarea id="edit-user-bio" class="auth-input" rows="2" style="padding:12px; margin-bottom:20px; resize:none;"></textarea>
-            
-            <div style="display:flex; gap:15px;">
-                <button onclick="document.getElementById('edit-user-modal').classList.add('hidden')" style="flex:1; padding:12px; background:transparent; color:var(--text-muted); border:1px solid var(--divider); border-radius:8px; cursor:pointer;">Cancel</button>
-                <button onclick="Fluxgram.profile.saveUserEdit()" style="flex:1; padding:12px; background:var(--primary); color:white; border-radius:8px; font-weight:bold; cursor:pointer;">Save</button>
+            <div style="display:flex; gap:10px;">
+                <button onclick="document.getElementById('email-change-modal').classList.add('hidden')" style="flex:1; padding:10px; background:transparent; color:var(--text-muted); border:1px solid var(--divider); border-radius:8px;">Cancel</button>
+                <button onclick="Fluxgram.profile.changeEmail()" style="flex:1; padding:10px; background:var(--primary); color:white; border-radius:8px; font-weight:bold;">Update</button>
             </div>
         </div>
     </div>
