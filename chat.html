@@ -27,6 +27,7 @@
             <div style="display:flex; gap: 5px; align-items: center;">
                 <button class="icon-btn" id="btn-copy-link" onclick="Fluxgram.chat.copyLink()"><i class="fas fa-link"></i></button>
                 <button class="icon-btn hidden" id="btn-add-member" onclick="Fluxgram.chat.promptAddMember()"><i class="fas fa-user-plus"></i></button>
+                <button class="icon-btn" id="btn-call-video" onclick="Fluxgram.call.startCall('video')"><i class="fas fa-video"></i></button>
                 <button class="icon-btn" id="btn-call-audio" onclick="Fluxgram.call.startCall('audio')"><i class="fas fa-phone-alt"></i></button>
             </div>
         </div>
@@ -35,12 +36,29 @@
             <div class="messages-container" id="messages-container"></div>
             <div id="typing-indicator" class="typing-indicator hidden">User is typing...</div>
 
-            <div class="input-area" id="input-area">
-                <button class="icon-btn" style="width:30px; height:30px;" onclick="Fluxgram.ui.toast('Media upload coming soon!')"><i class="fas fa-paperclip"></i></button>
+            <div id="emoji-panel" class="hidden">
+                <span onclick="Fluxgram.chat.addEmoji('😀')">😀</span><span onclick="Fluxgram.chat.addEmoji('😂')">😂</span>
+                <span onclick="Fluxgram.chat.addEmoji('❤️')">❤️</span><span onclick="Fluxgram.chat.addEmoji('😍')">😍</span>
+                <span onclick="Fluxgram.chat.addEmoji('👍')">👍</span><span onclick="Fluxgram.chat.addEmoji('😭')">😭</span>
+                <span onclick="Fluxgram.chat.addEmoji('🔥')">🔥</span><span onclick="Fluxgram.chat.addEmoji('🥰')">🥰</span>
+                <span onclick="Fluxgram.chat.addEmoji('😎')">😎</span><span onclick="Fluxgram.chat.addEmoji('🎉')">🎉</span>
+                <span onclick="Fluxgram.chat.addEmoji('😡')">😡</span><span onclick="Fluxgram.chat.addEmoji('🙏')">🙏</span>
+                <span onclick="Fluxgram.chat.addEmoji('💔')">💔</span><span onclick="Fluxgram.chat.addEmoji('💯')">💯</span>
+                <span onclick="Fluxgram.chat.addEmoji('🥺')">🥺</span><span onclick="Fluxgram.chat.addEmoji('👀')">👀</span>
+            </div>
+
+            <div class="input-area" id="input-area" style="position:relative;">
+                <button class="icon-btn" onclick="Fluxgram.chat.toggleEmoji()"><i class="far fa-smile"></i></button>
+                
+                <button class="icon-btn" onclick="document.getElementById('chat-file-input').click()"><i class="fas fa-paperclip"></i></button>
+                <input type="file" id="chat-file-input" class="hidden" accept="image/*" onchange="Fluxgram.chat.sendImage(event)">
+
                 <div class="input-wrapper">
                     <textarea id="msg-input" class="msg-input" rows="1" placeholder="Message..."></textarea>
                 </div>
-                <button class="send-btn" onclick="Fluxgram.chat.send()"><i class="fas fa-paper-plane"></i></button>
+
+                <button class="icon-btn hidden" id="btn-send-text" onclick="Fluxgram.chat.send()"><i class="fas fa-paper-plane" style="color:var(--primary);"></i></button>
+                <button class="icon-btn" id="btn-record-voice" onmousedown="Fluxgram.chat.startVoice()" onmouseup="Fluxgram.chat.stopVoice()" ontouchstart="Fluxgram.chat.startVoice()" ontouchend="Fluxgram.chat.stopVoice()"><i class="fas fa-microphone"></i></button>
             </div>
         </div>
     </div>
@@ -57,7 +75,6 @@
                 <h2 id="pv-name" style="font-size: 1.8rem; font-weight: 600; margin-bottom: 5px; color:white;">Name</h2>
                 <p id="pv-status" style="color: var(--accent); font-size: 1rem;">Status</p>
             </div>
-            
             <div style="background: var(--bg-surface); margin-top: 15px; border-top: 1px solid var(--divider); border-bottom: 1px solid var(--divider);">
                 <div id="pv-bio-box" style="padding: 15px 20px; border-bottom: 1px solid var(--divider);">
                     <div style="color: var(--text-main); font-size: 1.1rem;" id="pv-bio">Bio text</div>
@@ -67,18 +84,13 @@
                     <div style="color: var(--text-main); font-size: 1.1rem;" id="pv-username">@username</div>
                     <div style="color: var(--text-muted); font-size: 0.85rem; margin-top: 5px;">Username</div>
                 </div>
-                <div id="pv-phone-box" class="hidden" style="padding: 15px 20px;">
-                    <div style="color: var(--text-main); font-size: 1.1rem;" id="pv-phone">+880...</div>
-                    <div style="color: var(--text-muted); font-size: 0.85rem; margin-top: 5px;">Mobile</div>
-                </div>
             </div>
         </div>
     </div>
 
     <div id="edit-chat-modal" class="hidden" style="position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:9500; display:flex; align-items:center; justify-content:center; padding:20px; backdrop-filter:blur(3px);">
-        <div style="background:var(--bg-surface); padding:25px; border-radius:16px; width:100%; max-width:350px; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+        <div style="background:var(--bg-surface); padding:25px; border-radius:16px; width:100%; max-width:350px;">
             <h2 style="margin-bottom:15px; color:white; text-align:center;">Edit Settings</h2>
-            
             <div class="avatar-upload-wrap" style="padding:10px 0; background:transparent;">
                 <div class="avatar-upload-circle" onclick="document.getElementById('chat-avatar-input').click()">
                     <span id="chat-avatar-text">G</span>
@@ -87,21 +99,16 @@
                 </div>
                 <input type="file" id="chat-avatar-input" accept="image/*" class="hidden" onchange="Fluxgram.profile.previewImage(event, 'chat-avatar-preview', 'chat-avatar-text')">
             </div>
-
-            <label style="color:var(--accent); font-size:0.85rem; margin-bottom:5px; display:block;">Name</label>
+            <label style="color:var(--accent); font-size:0.85rem; display:block;">Name</label>
             <input type="text" id="edit-chat-name" class="auth-input" style="padding:10px; margin-bottom:10px;">
-            
-            <label style="color:var(--accent); font-size:0.85rem; margin-bottom:5px; display:block;">@username</label>
+            <label style="color:var(--accent); font-size:0.85rem; display:block;">@username</label>
             <input type="text" id="edit-chat-username" class="auth-input" style="padding:10px; margin-bottom:10px;">
-            
-            <label style="color:var(--accent); font-size:0.85rem; margin-bottom:5px; display:block;">Description</label>
+            <label style="color:var(--accent); font-size:0.85rem; display:block;">Description</label>
             <textarea id="edit-chat-desc" class="auth-input" rows="2" style="padding:10px; margin-bottom:15px; resize:none;"></textarea>
-            
             <button onclick="Fluxgram.profile.deleteChat()" style="width:100%; padding:10px; background:rgba(255,59,48,0.1); color:var(--danger); border:1px solid var(--danger); border-radius:8px; font-weight:bold; margin-bottom: 15px; cursor:pointer;"><i class="fas fa-trash"></i> Delete Group/Channel</button>
-
             <div style="display:flex; gap:10px;">
-                <button onclick="document.getElementById('edit-chat-modal').classList.add('hidden')" style="flex:1; padding:10px; background:transparent; color:var(--text-muted); border:1px solid var(--divider); border-radius:8px; cursor:pointer;">Cancel</button>
-                <button onclick="Fluxgram.profile.saveChatEdit()" style="flex:1; padding:10px; background:var(--primary); color:white; border-radius:8px; font-weight:bold; cursor:pointer;">Save</button>
+                <button onclick="document.getElementById('edit-chat-modal').classList.add('hidden')" style="flex:1; padding:10px; background:transparent; color:var(--text-muted); border:1px solid var(--divider); border-radius:8px;">Cancel</button>
+                <button onclick="Fluxgram.profile.saveChatEdit()" style="flex:1; padding:10px; background:var(--primary); color:white; border-radius:8px; font-weight:bold;">Save</button>
             </div>
         </div>
     </div>
@@ -124,6 +131,6 @@
         </div>
     </div>
 
-    <script type="module" src="app.js"></script>
+    <script type="module" src="app.js?v=6"></script>
 </body>
 </html>
