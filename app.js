@@ -1,10 +1,9 @@
 // ============================================================================
-// app.js - Fluxgram Complete Enterprise Engine (All-in-One)
+// app.js - Fluxgram Complete Enterprise Engine (With Profile Edit & Delete)
 // ============================================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, RecaptchaVerifier, signInWithPhoneNumber } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, getDocs, collection, addDoc, updateDoc, onSnapshot, query, where, orderBy, serverTimestamp, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc, getDocs, collection, addDoc, updateDoc, deleteDoc, onSnapshot, query, where, orderBy, serverTimestamp, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // --- 1. FIREBASE INITIALIZATION ---
 const firebaseConfig = {
@@ -19,37 +18,27 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const storage = getStorage(app);
 
 // --- 2. GLOBAL NAMESPACE ---
 window.Fluxgram = {
-    state: { 
-        currentUser: null, 
-        activeChatId: null, 
-        activeChatUser: null, 
-        activeChatData: null, 
-        unsubMessages: null, 
-        unsubChats: null, 
-        typingTimeout: null, 
-        callDocId: null,
-        confirmationResult: null
-    },
-    ui: {}, auth: {}, dash: {}, chat: {}, call: {}, utils: {}
+    state: { currentUser: null, userData: null, activeChatId: null, activeChatUser: null, activeChatData: null, unsubMessages: null, unsubChats: null, typingTimeout: null, callDocId: null },
+    ui: {}, auth: {}, dash: {}, chat: {}, call: {}, utils: {}, profile: {}
 };
 
 const State = window.Fluxgram.state;
 
 // --- 3. UTILS ---
 window.Fluxgram.utils = {
-    isUsernameUnique: async (username) => {
+    isUsernameUnique: async (username, currentUsername = null) => {
         const u = username.toLowerCase().replace('@', '');
+        if (currentUsername && u === currentUsername.toLowerCase().replace('@', '')) return true; // unchanged
+
         const qUsers = query(collection(db, "users"), where("searchKey", "==", u));
         const qChats = query(collection(db, "chats"), where("searchKey", "==", u));
         const [sU, sC] = await Promise.all([getDocs(qUsers), getDocs(qChats)]);
         return sU.empty && sC.empty;
     },
     parseMentions: (text) => {
-        // Converts @username to clickable blue text
         return text.replace(/@([a-zA-Z0-9_]{6,})/g, '<span style="color: var(--accent); cursor: pointer; text-decoration: underline;" onclick="Fluxgram.chat.openByUsername(\'$1\')">@$1</span>');
     }
 };
@@ -76,7 +65,6 @@ window.Fluxgram.ui = {
     autoResize: (el) => { if (el) { el.style.height = 'auto'; el.style.height = (el.scrollHeight) + 'px'; } },
     getParam: (param) => new URLSearchParams(window.location.search).get(param),
     
-    // Profile View logic
     showProfile: () => {
         const pv = document.getElementById('profile-view');
         if(!pv) return;
@@ -92,10 +80,16 @@ window.Fluxgram.ui = {
             if(d.username) {
                 document.getElementById('pv-username-box').classList.remove('hidden');
                 document.getElementById('pv-username').innerText = `@${d.username}`;
-            } else {
-                document.getElementById('pv-username-box').classList.add('hidden');
-            }
+            } else { document.getElementById('pv-username-box').classList.add('hidden'); }
+            
             document.getElementById('pv-phone-box').classList.add('hidden');
+
+            // Show Edit Button if Admin
+            const editBtn = document.getElementById('btn-edit-chat');
+            if(editBtn) {
+                if(d.admin === State.currentUser.uid) editBtn.classList.remove('hidden');
+                else editBtn.classList.add('hidden');
+            }
 
         } else if (State.activeChatUser) {
             const u = State.activeChatUser;
@@ -108,16 +102,15 @@ window.Fluxgram.ui = {
             if(u.username) {
                 document.getElementById('pv-username-box').classList.remove('hidden');
                 document.getElementById('pv-username').innerText = `@${u.username}`;
-            } else {
-                document.getElementById('pv-username-box').classList.add('hidden');
-            }
+            } else { document.getElementById('pv-username-box').classList.add('hidden'); }
 
             if(u.phone || u.email) {
                 document.getElementById('pv-phone-box').classList.remove('hidden');
                 document.getElementById('pv-phone').innerText = u.phone || u.email;
-            } else {
-                document.getElementById('pv-phone-box').classList.add('hidden');
-            }
+            } else { document.getElementById('pv-phone-box').classList.add('hidden'); }
+            
+            const editBtn = document.getElementById('btn-edit-chat');
+            if(editBtn) editBtn.classList.add('hidden'); // Cannot edit other users
         }
         pv.classList.remove('hidden');
     },
@@ -138,7 +131,6 @@ window.Fluxgram.auth = {
         try { await signInWithEmailAndPassword(auth, e, p); } 
         catch (err) { UI.toast("Invalid credentials.", "error"); UI.loader(false); }
     },
-
     signup: async () => {
         let u = document.getElementById('signup-username').value.trim().replace('@', '');
         const e = document.getElementById('signup-email').value.trim();
@@ -161,17 +153,12 @@ window.Fluxgram.auth = {
         } catch (err) { UI.toast(err.message, "error"); } 
         finally { UI.loader(false); }
     },
-
     reset: async () => {
         const e = document.getElementById('reset-email').value.trim();
         if(!e) return UI.toast("Enter email", "error");
-        try {
-            await sendPasswordResetEmail(auth, e);
-            UI.toast("Password reset link sent!", "success");
-            UI.toggleForms('login');
-        } catch(err) { UI.toast(err.message, "error"); }
+        try { await sendPasswordResetEmail(auth, e); UI.toast("Password reset link sent!", "success"); UI.toggleForms('login'); } 
+        catch(err) { UI.toast(err.message, "error"); }
     },
-
     logout: async () => {
         UI.loader(true);
         if(auth.currentUser) await setDoc(doc(db, "users", auth.currentUser.uid), { isOnline: false, lastSeen: serverTimestamp() }, { merge: true });
@@ -193,29 +180,103 @@ onAuthStateChanged(auth, async (user) => {
         State.currentUser = user;
         updatePresence(true);
         
+        // Fetch User Data for Editing
+        onSnapshot(doc(db, "users", user.uid), (d) => { if(d.exists()) State.userData = d.data(); });
+        
         const deepLinkUsername = UI.getParam('link');
         if(deepLinkUsername && !path.endsWith('chat.html')) {
             window.location.replace(`chat.html?link=${deepLinkUsername}`);
             return;
         }
 
-        if (path.endsWith('index.html') || path === '/' || path.endsWith('/')) {
-            window.location.replace('dashboard.html');
-        } else if (path.endsWith('dashboard.html')) {
-            window.Fluxgram.dash.loadChats();
-        } else if (path.endsWith('chat.html')) {
-            window.Fluxgram.chat.init();
-            window.Fluxgram.call.listenForCalls();
-        }
+        if (path.endsWith('index.html') || path === '/' || path.endsWith('/')) { window.location.replace('dashboard.html'); } 
+        else if (path.endsWith('dashboard.html')) { window.Fluxgram.dash.loadChats(); } 
+        else if (path.endsWith('chat.html')) { window.Fluxgram.chat.init(); window.Fluxgram.call.listenForCalls(); }
     } else {
         State.currentUser = null;
-        if (!path.endsWith('index.html') && path !== '/' && !path.endsWith('/')) {
-            window.location.replace('index.html');
-        }
+        if (!path.endsWith('index.html') && path !== '/' && !path.endsWith('/')) { window.location.replace('index.html'); }
     }
 });
 
-// --- 6. DASHBOARD (Groups/Channels/Search) ---
+// --- 6. PROFILE & SETTINGS MANAGER (NEW) ---
+window.Fluxgram.profile = {
+    // Current User Profile Edit
+    openUserEdit: () => {
+        if(!State.userData) return;
+        document.getElementById('edit-user-name').value = State.userData.name || '';
+        document.getElementById('edit-user-username').value = State.userData.username || '';
+        document.getElementById('edit-user-bio').value = State.userData.bio || '';
+        document.getElementById('edit-user-modal').classList.remove('hidden');
+    },
+    saveUserEdit: async () => {
+        const n = document.getElementById('edit-user-name').value.trim();
+        let u = document.getElementById('edit-user-username').value.trim().replace('@', '');
+        const b = document.getElementById('edit-user-bio').value.trim();
+
+        if(!u || u.length < 6) return UI.toast("Username must be at least 6 chars", "error");
+        
+        UI.loader(true);
+        try {
+            const isUnique = await Utils.isUsernameUnique(u, State.userData.username);
+            if(!isUnique) throw new Error("This @username is already taken!");
+
+            await setDoc(doc(db, "users", State.currentUser.uid), {
+                name: n, username: u, searchKey: u.toLowerCase(), bio: b
+            }, { merge: true });
+
+            document.getElementById('edit-user-modal').classList.add('hidden');
+            UI.toast("Profile updated successfully!");
+        } catch(e) { UI.toast(e.message, "error"); }
+        UI.loader(false);
+    },
+
+    // Group/Channel Profile Edit (Admin Only)
+    openChatEdit: () => {
+        if(!State.activeChatData || State.activeChatData.admin !== State.currentUser.uid) return;
+        const d = State.activeChatData;
+        document.getElementById('edit-chat-name').value = d.name || '';
+        document.getElementById('edit-chat-username').value = d.username || '';
+        document.getElementById('edit-chat-desc').value = d.desc || '';
+        document.getElementById('edit-chat-modal').classList.remove('hidden');
+    },
+    saveChatEdit: async () => {
+        const n = document.getElementById('edit-chat-name').value.trim();
+        let u = document.getElementById('edit-chat-username').value.trim().replace('@', '');
+        const desc = document.getElementById('edit-chat-desc').value.trim();
+
+        if(!n) return UI.toast("Name is required", "error");
+        if(u && u.length < 6) return UI.toast("Username must be at least 6 chars", "error");
+
+        UI.loader(true);
+        try {
+            if(u) {
+                const isUnique = await Utils.isUsernameUnique(u, State.activeChatData.username);
+                if(!isUnique) throw new Error("This @username is already taken!");
+            }
+
+            await updateDoc(doc(db, "chats", State.activeChatId), {
+                name: n, username: u || null, searchKey: u ? u.toLowerCase() : null, desc: desc
+            });
+
+            document.getElementById('edit-chat-modal').classList.add('hidden');
+            UI.toast("Updated successfully!");
+            UI.showProfile(); // Refresh profile view
+        } catch(e) { UI.toast(e.message, "error"); }
+        UI.loader(false);
+    },
+    deleteChat: async () => {
+        if(confirm("Are you sure you want to delete this Group/Channel permanently? This cannot be undone.")) {
+            UI.loader(true);
+            try {
+                await deleteDoc(doc(db, "chats", State.activeChatId));
+                UI.toast("Deleted successfully");
+                window.location.href = 'dashboard.html';
+            } catch(e) { UI.toast("Error deleting: " + e.message, "error"); UI.loader(false); }
+        }
+    }
+};
+
+// --- 7. DASHBOARD LOGIC ---
 window.Fluxgram.dash = {
     search: async () => {
         const term = document.getElementById('search-input').value.trim().toLowerCase().replace('@', '');
@@ -247,7 +308,7 @@ window.Fluxgram.dash = {
             });
 
             if(resultsBox.innerHTML === '') resultsBox.innerHTML = `<div style="padding:15px; text-align:center; color:var(--text-muted);">No matches found</div>`;
-        } catch(e) { console.error(e); }
+        } catch(e) {}
     },
 
     setCreateType: (type) => {
@@ -317,7 +378,7 @@ window.Fluxgram.dash = {
     }
 };
 
-// --- 7. CHAT LOGIC ---
+// --- 8. CHAT LOGIC ---
 window.Fluxgram.chat = {
     init: async () => {
         const otherUid = UI.getParam('uid');       
@@ -349,6 +410,12 @@ window.Fluxgram.chat = {
                         else document.getElementById('input-area').classList.remove('hidden');
                         
                         if(data.lastSender !== State.currentUser.uid) updateDoc(doc(db, "chats", existingChatId), { unreadCount: 0 });
+                        
+                        // Update Profile View if it's open
+                        if(!document.getElementById('profile-view').classList.contains('hidden')) UI.showProfile();
+                    } else {
+                        // Chat was deleted by admin
+                        window.location.replace('dashboard.html');
                     }
                 });
             } else {
@@ -366,9 +433,7 @@ window.Fluxgram.chat = {
                         State.activeChatUser = u;
                         document.getElementById('chat-name').innerText = u.username;
                         document.getElementById('chat-avatar').innerText = u.username.charAt(0).toUpperCase();
-                        const statusEl = document.getElementById('chat-status');
-                        statusEl.innerText = u.isOnline ? 'Online' : 'Offline';
-                        statusEl.style.color = u.isOnline ? 'var(--accent)' : 'var(--text-muted)';
+                        document.getElementById('chat-status').innerText = u.isOnline ? 'Online' : 'Offline';
                     }
                 });
             }
@@ -491,7 +556,7 @@ window.Fluxgram.chat = {
     }
 };
 
-// --- 8. WEBRTC CALLING SYSTEM ---
+// --- 9. WEBRTC CALLING SYSTEM ---
 const servers = { iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }] };
 let pc = null;
 let localStream = null;
