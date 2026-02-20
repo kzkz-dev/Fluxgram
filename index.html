@@ -3,142 +3,153 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Fluxgram | Connect Securely</title>
+    <title>Fluxgram | Global Secure Messenger</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
-        /* --- CSS VARIABLES (Theming) --- */
+        /* --- CORE VARIABLES --- */
         :root {
             --bg-base: #0e1621; 
-            --bg-surface: #17212b; 
+            --bg-surface: #17212b;
             --bg-hover: #202b36;
             --primary: #ff0050; 
-            --accent: #00f3ff; 
+            --accent: #00f3ff;
             --text-main: #ffffff;
-            --text-muted: #7f91a4; 
-            --divider: #101921; 
+            --text-muted: #7f91a4;
+            --divider: #101921;
             --msg-rx: #182533;
-            --msg-tx: #2b5278; 
-            --danger: #ff3b30;
-            --success: #4caf50;
+            --msg-tx: #2b5278;
             --transition: 0.3s cubic-bezier(0.25, 1, 0.5, 1);
         }
 
-        /* Light Mode Theme overrides */
-        body.light-mode {
-            --bg-base: #ffffff; --bg-surface: #f0f2f5; --bg-hover: #e4e6eb;
-            --text-main: #050505; --text-muted: #65676b; --divider: #cccccc;
-            --msg-rx: #e4e6eb; --msg-tx: #0084ff;
-        }
-
-        /* --- RESET & MOBILE BOUNDARIES --- */
+        /* --- RESET & LAYOUT --- */
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         html, body { width: 100vw; height: 100dvh; background: var(--bg-base); color: var(--text-main); font-family: 'Roboto', sans-serif; overflow: hidden; position: fixed; inset: 0; }
         ::-webkit-scrollbar { width: 4px; height: 4px; }
-        ::-webkit-scrollbar-thumb { background: rgba(127,145,164,0.3); border-radius: 4px; }
-        
-        button, input, textarea { font-family: inherit; outline: none; border: none; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+        input, textarea, button { font-family: inherit; outline: none; }
         .hidden { display: none !important; }
 
-        /* --- SPA ARCHITECTURE --- */
+        /* --- SPA VIEW ENGINE --- */
         #app-root { display: flex; width: 100%; height: 100%; position: relative; overflow: hidden; }
-        .view { position: absolute; inset: 0; background: var(--bg-base); z-index: 50; transform: translateX(100%); transition: transform var(--transition); display: flex; flex-direction: column; }
-        .view.active { transform: translateX(0); }
-        .base-view { position: relative; z-index: 10; transform: translateX(0); width: 100%; height: 100%; display: flex; flex-direction: column; }
+        .view-layer { position: absolute; inset: 0; background: var(--bg-base); z-index: 50; transform: translateX(100%); transition: transform var(--transition); display: flex; flex-direction: column; }
+        .view-layer.active { transform: translateX(0); }
+        .base-layer { position: relative; z-index: 10; width: 100%; height: 100%; display: flex; }
 
         /* --- REUSABLE COMPONENTS --- */
-        .header { height: 60px; background: var(--bg-surface); display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid var(--divider); flex-shrink: 0; z-index: 100; }
-        .icon-btn { background: transparent; color: var(--text-muted); font-size: 1.4rem; width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
-        .icon-btn:hover { background: var(--bg-hover); color: var(--accent); }
-        .header-title { font-size: 1.25rem; font-weight: 500; font-family: 'Outfit', sans-serif; flex: 1; margin-left: 10px; }
+        .app-header { height: 60px; background: var(--bg-surface); display: flex; align-items: center; padding: 0 15px; border-bottom: 1px solid var(--divider); z-index: 100; flex-shrink: 0; }
+        .btn-icon { background: none; border: none; color: var(--text-muted); font-size: 1.3rem; width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
+        .btn-icon:hover { background: var(--bg-hover); color: var(--text-main); }
+        .header-title { font-size: 1.25rem; font-weight: 500; margin-left: 10px; flex: 1; font-family: 'Outfit', sans-serif; }
         
-        .avatar { width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--accent)); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2rem; color: white; object-fit: cover; flex-shrink: 0; text-transform: uppercase; }
-        .list-item { display: flex; align-items: center; padding: 12px 15px; cursor: pointer; transition: 0.2s; border-bottom: 1px solid var(--divider); background: var(--bg-base); }
+        .list-item { display: flex; align-items: center; padding: 12px 20px; cursor: pointer; transition: 0.2s; background: var(--bg-surface); border-bottom: 1px solid var(--divider); }
         .list-item:hover { background: var(--bg-hover); }
-        .list-info { flex: 1; overflow: hidden; margin-left: 15px; }
+        .list-icon { width: 40px; font-size: 1.4rem; color: var(--text-muted); display: flex; align-items: center; justify-content: center; }
+        .list-text { flex: 1; font-size: 1.05rem; }
+        .list-sub { font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; }
         
-        /* --- LOADER --- */
-        .loader-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.6); z-index: 99999; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(3px); }
-        .spinner { width: 40px; height: 40px; border: 4px solid var(--text-muted); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        .verified-badge { color: #00f3ff; font-size: 0.85rem; margin-left: 5px; }
 
-        /* --- TOAST NOTIFICATIONS --- */
-        #toast-container { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); z-index: 100000; display: flex; flex-direction: column; gap: 10px; width: 90%; max-width: 400px; pointer-events: none; }
-        .toast { background: var(--bg-surface); color: var(--text-main); padding: 15px 20px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); border-left: 4px solid var(--accent); animation: slideDown 0.3s ease forwards; font-size: 0.95rem; }
-        .toast.error { border-left-color: var(--danger); }
-        .toast.success { border-left-color: var(--success); }
-        @keyframes slideDown { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-
-        /* --- 1. AUTH SCREEN --- */
-        #auth-view { z-index: 9000; justify-content: center; align-items: center; padding: 20px; background: radial-gradient(circle at top, #1a0b12 0%, var(--bg-base) 100%); }
-        .auth-card { background: var(--bg-surface); padding: 30px; border-radius: 16px; width: 100%; max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid var(--divider); }
-        .auth-logo { font-size: 3rem; text-align: center; margin-bottom: 20px; font-family: 'Outfit'; }
+        /* --- 0. AUTH SCREEN --- */
+        #auth-screen { position: absolute; inset: 0; background: var(--bg-base); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; transition: 0.5s; }
+        .auth-logo { font-size: 3.5rem; margin-bottom: 10px; display: flex; align-items: center; gap: 15px; font-family: 'Outfit'; }
         .auth-logo i { color: var(--primary); }
-        .auth-input { width: 100%; background: var(--bg-base); padding: 15px; border-radius: 10px; color: var(--text-main); margin-bottom: 15px; font-size: 1rem; border: 1px solid var(--divider); }
-        .auth-input:focus { border-color: var(--accent); }
-        .auth-btn { width: 100%; padding: 15px; background: var(--primary); border-radius: 10px; color: white; font-weight: bold; cursor: pointer; font-size: 1.05rem; transition: 0.2s; }
-        .auth-btn:active { transform: scale(0.97); }
-        .auth-link { text-align: center; color: var(--accent); margin-top: 15px; font-size: 0.9rem; cursor: pointer; }
-
-        /* --- 2. DASHBOARD (Chat List) --- */
-        .search-bar { padding: 10px 15px; background: var(--bg-surface); border-bottom: 1px solid var(--divider); }
-        .search-input-wrap { background: var(--bg-base); border-radius: 20px; display: flex; align-items: center; padding: 8px 15px; }
-        .search-input-wrap input { flex: 1; background: transparent; color: var(--text-main); font-size: 0.95rem; margin-left: 10px; }
-        .chat-list { flex: 1; overflow-y: auto; background: var(--bg-base); }
-        .chat-name-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
-        .chat-name { font-weight: 600; font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .chat-time { font-size: 0.75rem; color: var(--text-muted); }
-        .chat-msg-row { display: flex; justify-content: space-between; align-items: center; }
-        .chat-msg { font-size: 0.9rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; padding-right: 10px; }
-        .unread-badge { background: var(--primary); color: white; font-size: 0.75rem; font-weight: bold; padding: 2px 6px; border-radius: 10px; min-width: 20px; text-align: center; }
-        .fab { position: absolute; bottom: 20px; right: 20px; width: 60px; height: 60px; background: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: var(--bg-base); box-shadow: 0 4px 15px rgba(0, 243, 255, 0.4); z-index: 40; cursor: pointer; transition: 0.2s; }
-        .fab:active { transform: scale(0.9); }
-
-        /* --- 3. CHAT SCREEN --- */
-        .chat-bg { background: url('https://web.telegram.org/a/chat-bg-pattern-dark.png'), var(--bg-base); flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-        .typing-status { font-size: 0.8rem; color: var(--accent); font-weight: normal; }
+        .auth-logo span { font-weight: 900; }
+        .auth-card { background: var(--bg-surface); padding: 30px; border-radius: 16px; width: 100%; max-width: 380px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); margin-top: 20px; }
+        .auth-title { text-align: center; font-size: 1.5rem; margin-bottom: 25px; font-weight: 500; }
         
-        .messages-container { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-        .msg-row { display: flex; flex-direction: column; max-width: 80%; position: relative; }
-        .msg-rx { align-self: flex-start; }
-        .msg-tx { align-self: flex-end; }
-        .msg-bubble { padding: 8px 14px; border-radius: 16px; font-size: 1rem; line-height: 1.4; word-wrap: break-word; min-width: 70px; }
-        .msg-rx .msg-bubble { background: var(--msg-rx); border-bottom-left-radius: 4px; border: 1px solid var(--divider); }
-        .msg-tx .msg-bubble { background: var(--msg-tx); border-bottom-right-radius: 4px; color: white; }
-        .msg-media { max-width: 100%; border-radius: 8px; margin-bottom: 5px; }
-        .msg-meta { font-size: 0.7rem; float: right; margin: 5px 0 0 10px; display: flex; align-items: center; gap: 4px; opacity: 0.7; }
+        .phone-input-group { display: flex; background: var(--bg-base); border-radius: 12px; border: 1px solid var(--divider); overflow: hidden; margin-bottom: 20px; }
+        .country-select { background: transparent; border: none; color: white; padding: 15px; outline: none; border-right: 1px solid var(--divider); cursor: pointer; font-size: 1rem; }
+        .phone-input { flex: 1; background: transparent; border: none; color: white; padding: 15px; outline: none; font-size: 1rem; }
+        .phone-input-group:focus-within { border-color: var(--accent); }
+        
+        .auth-btn { width: 100%; padding: 15px; background: var(--primary); border: none; border-radius: 12px; color: white; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .auth-btn:active { transform: scale(0.97); }
 
-        .input-area { background: var(--bg-surface); padding: 10px 15px; display: flex; align-items: flex-end; gap: 10px; border-top: 1px solid var(--divider); z-index: 20; }
-        .input-wrapper { flex: 1; background: var(--bg-base); border-radius: 24px; padding: 10px 15px; border: 1px solid var(--divider); }
-        .msg-input { width: 100%; background: transparent; color: var(--text-main); resize: none; max-height: 120px; font-size: 1rem; line-height: 1.4; }
-        .msg-input::placeholder { color: var(--text-muted); }
-        .send-btn { width: 45px; height: 45px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; color: white; font-size: 1.2rem; cursor: pointer; flex-shrink: 0; transition: 0.2s; }
-        .send-btn:active { transform: scale(0.9); }
+        #recaptcha-container { display: flex; justify-content: center; margin-bottom: 15px; min-height: 78px; }
 
-        /* --- 4. CALL FEATURE (MOCK UI) --- */
-        #call-overlay { position: absolute; inset: 0; background: #000; z-index: 99999; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 50px 20px; }
-        .call-info { text-align: center; margin-top: 50px; }
-        .call-avatar { width: 120px; height: 120px; border-radius: 50%; margin: 0 auto 20px; font-size: 4rem; display: flex; align-items: center; justify-content: center; background: var(--primary); color: white; }
-        .call-name { font-size: 2rem; color: white; font-weight: 500; }
-        .call-status { color: var(--accent); font-size: 1.1rem; margin-top: 10px; }
-        .call-controls { display: flex; gap: 30px; margin-bottom: 30px; }
+        /* --- 1. SIDEBAR (CHAT LIST) --- */
+        .sidebar { width: 350px; height: 100%; background: var(--bg-surface); border-right: 1px solid var(--divider); display: flex; flex-direction: column; flex-shrink: 0; z-index: 20; transition: var(--transition); }
+        .search-container { padding: 10px 15px; display: flex; gap: 10px; align-items: center; border-bottom: 1px solid var(--divider); }
+        .search-box { flex: 1; background: var(--bg-base); border-radius: 20px; display: flex; align-items: center; padding: 0 15px; height: 40px; }
+        .search-box input { background: transparent; border: none; color: white; width: 100%; height: 100%; margin-left: 10px; font-size: 0.95rem; }
+        
+        .chat-list { flex: 1; overflow-y: auto; background: var(--bg-base); }
+        .chat-cell { display: flex; align-items: center; padding: 12px 15px; cursor: pointer; transition: 0.2s; border-bottom: 1px solid rgba(255,255,255,0.02); }
+        .chat-cell:hover { background: var(--bg-hover); }
+        .c-avatar { width: 54px; height: 54px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; font-weight: bold; margin-right: 15px; flex-shrink: 0; font-family: 'Outfit', sans-serif; text-transform: uppercase; }
+        .c-info { flex: 1; overflow: hidden; }
+        .c-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 3px; }
+        .c-name { font-weight: 600; font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; }
+        .c-time { font-size: 0.75rem; color: var(--text-muted); }
+        .c-bottom { display: flex; justify-content: space-between; align-items: center; }
+        .c-msg { font-size: 0.95rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 10px; }
+        
+        .fab-main { position: absolute; bottom: 25px; right: 25px; width: 60px; height: 60px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: var(--bg-base); cursor: pointer; box-shadow: 0 4px 15px rgba(0, 243, 255, 0.4); z-index: 30; }
+
+        /* --- 2. MAIN CHAT AREA --- */
+        .chat-area { flex: 1; display: flex; flex-direction: column; background: url('https://web.telegram.org/a/chat-bg-pattern-dark.png'), var(--bg-base); position: relative; height: 100%; }
+        
+        .chat-top-bar { height: 60px; background: var(--bg-surface); display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid var(--divider); z-index: 10; cursor: pointer; }
+        .ct-left { display: flex; align-items: center; gap: 15px; flex: 1; overflow: hidden; }
+        .ct-avatar { width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-family: 'Outfit'; }
+        .ct-info { flex: 1; overflow: hidden; }
+        .ct-name { font-weight: 600; font-size: 1.1rem; white-space: nowrap; text-overflow: ellipsis; }
+        .ct-status { font-size: 0.85rem; color: var(--text-muted); }
+        .ct-status.online { color: var(--accent); }
+
+        .msg-scroll { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .bubble-wrap { display: flex; flex-direction: column; max-width: 75%; }
+        .wrap-rx { align-self: flex-start; }
+        .wrap-tx { align-self: flex-end; }
+        .bubble { padding: 10px 15px; border-radius: 16px; font-size: 1.05rem; line-height: 1.4; word-wrap: break-word; min-width: 80px; }
+        .bubble-rx { background: var(--msg-rx); border-bottom-left-radius: 4px; border: 1px solid rgba(255,255,255,0.05); }
+        .bubble-tx { background: var(--msg-tx); border-bottom-right-radius: 4px; color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .b-time { font-size: 0.7rem; color: rgba(255,255,255,0.6); float: right; margin-top: 5px; margin-left: 10px; }
+        .b-tick { color: var(--accent); margin-left: 3px; font-size: 0.75rem; }
+
+        .input-bar { background: var(--bg-surface); padding: 10px 15px; display: flex; align-items: flex-end; gap: 10px; z-index: 20; border-top: 1px solid var(--divider); }
+        .attach-btn { color: var(--text-muted); font-size: 1.5rem; cursor: pointer; padding: 10px; }
+        .input-field { flex: 1; background: var(--bg-base); border-radius: 20px; padding: 10px 15px; display: flex; align-items: center; border: 1px solid transparent; }
+        .input-field:focus-within { border-color: var(--divider); }
+        .input-field textarea { width: 100%; background: transparent; color: white; resize: none; max-height: 120px; font-size: 1.05rem; line-height: 1.4; }
+        .mic-btn { width: 48px; height: 48px; border-radius: 50%; background: var(--bg-base); display: flex; align-items: center; justify-content: center; font-size: 1.3rem; color: var(--text-muted); cursor: pointer; transition: 0.2s; flex-shrink: 0; }
+        .mic-btn.send-mode { background: var(--primary); color: white; box-shadow: 0 4px 10px rgba(255,0,80,0.3); }
+
+        /* --- 3. DRAWER (MAIN MENU) --- */
+        .overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.6); z-index: 400; display: none; backdrop-filter: blur(2px); }
+        .drawer-menu { position: absolute; top: 0; left: -300px; width: 280px; height: 100%; background: var(--bg-surface); z-index: 401; transition: 0.3s; display: flex; flex-direction: column; border-right: 1px solid var(--divider); box-shadow: 5px 0 20px rgba(0,0,0,0.5); }
+        .drawer-menu.open { left: 0; }
+        .dm-header { padding: 30px 20px; background: var(--bg-hover); display: flex; flex-direction: column; border-bottom: 1px solid var(--divider); }
+        .dm-avatar { width: 65px; height: 65px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: bold; font-family: 'Outfit'; margin-bottom: 10px; text-transform: uppercase; }
+        .dm-name { font-weight: 600; font-size: 1.2rem; }
+        .dm-phone { font-size: 0.9rem; color: var(--text-muted); margin-top: 3px; }
+        .dm-list { flex: 1; overflow-y: auto; padding: 10px 0; }
+
+        /* --- 4. PROFILE & SETTINGS VIEWS --- */
+        .info-header { padding: 30px 20px; text-align: center; background: var(--bg-base); border-bottom: 1px solid var(--divider); }
+        .info-avatar { width: 120px; height: 120px; border-radius: 50%; margin: 0 auto 15px; font-size: 4rem; display: flex; align-items: center; justify-content: center; background: var(--primary); text-transform: uppercase; }
+        .info-name { font-size: 1.6rem; font-weight: 600; margin-bottom: 5px; }
+        .info-status { color: var(--accent); font-size: 0.9rem; margin-bottom: 20px; }
+        .settings-block { background: var(--bg-surface); border-top: 1px solid var(--divider); border-bottom: 1px solid var(--divider); margin-bottom: 15px; }
+        .section-header { padding: 15px 20px 5px; font-size: 0.9rem; color: var(--accent); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+
+        /* --- 5. SEARCH RESULTS & MODALS --- */
+        .search-results { max-height: 300px; overflow-y: auto; background: var(--bg-surface); }
+        
+        #call-screen { position: absolute; inset: 0; background: #000; z-index: 99999; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 60px 20px; }
         .call-btn { width: 70px; height: 70px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; color: white; cursor: pointer; }
-        .btn-end { background: var(--danger); }
-        .btn-accept { background: var(--success); }
-        .btn-action { background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); }
 
-        /* --- 5. SIDEBAR / MENU OVERLAY --- */
-        #menu-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.5); z-index: 8000; opacity: 0; pointer-events: none; transition: 0.3s; }
-        #menu-overlay.active { opacity: 1; pointer-events: all; }
-        #side-drawer { position: absolute; top: 0; left: -300px; width: 280px; height: 100%; background: var(--bg-surface); z-index: 8001; transition: 0.3s; display: flex; flex-direction: column; border-right: 1px solid var(--divider); }
-        #side-drawer.open { left: 0; }
-        .drawer-header { padding: 30px 20px 20px; background: var(--bg-hover); border-bottom: 1px solid var(--divider); }
-        .drawer-menu { flex: 1; overflow-y: auto; padding: 10px 0; }
-        .drawer-item { padding: 15px 20px; display: flex; align-items: center; gap: 20px; color: var(--text-main); font-size: 1.05rem; cursor: pointer; }
-        .drawer-item:hover { background: var(--bg-hover); color: var(--accent); }
-        .drawer-item i { font-size: 1.3rem; color: var(--text-muted); width: 25px; text-align: center; }
+        /* --- MOBILE RESPONSIVE --- */
+        @media (max-width: 768px) {
+            .sidebar { width: 100%; position: absolute; z-index: 20; }
+            .chat-area { position: absolute; width: 100%; z-index: 30; transform: translateX(100%); transition: var(--transition); }
+            .chat-area.active { transform: translateX(0); }
+            .mobile-back { display: block !important; }
+        }
+        .mobile-back { display: none; margin-right: 15px; }
 
     </style>
 </head>
@@ -146,162 +157,177 @@
 
 <div id="app-root">
     
-    <div id="toast-container"></div>
-
-    <div id="global-loader" class="loader-overlay hidden">
-        <div class="spinner"></div>
-    </div>
-
-    <div id="auth-view" class="view active">
-        <div class="auth-card">
-            <div class="auth-logo"><i class="fas fa-bolt"></i> Flux<span>gram</span></div>
+    <div id="auth-screen">
+        <div class="auth-card" id="step-phone">
+            <div class="auth-logo"><i class="fas fa-bolt"></i> <span>Flux<b>gram</b></span></div>
+            <h2 class="auth-title">Sign In</h2>
             
-            <div id="login-form">
-                <h2 style="margin-bottom: 20px; text-align: center;">Sign In</h2>
-                <input type="email" id="login-email" class="auth-input" placeholder="Email Address">
-                <input type="password" id="login-password" class="auth-input" placeholder="Password">
-                <button class="auth-btn" onclick="appAuth.login()">Login</button>
-                <div class="auth-link" onclick="appUI.toggleAuth('register')">Create an Account</div>
-                <div class="auth-link" style="color:var(--text-muted);" onclick="appAuth.resetPassword()">Forgot Password?</div>
+            <div style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 15px; text-align: center;">
+                Select country code and enter your number.
+            </div>
+            
+            <div class="phone-input-group">
+                <select class="country-select" id="countryCode">
+                    <option value="+880">BD (+880)</option>
+                    <option value="+1">USA (+1)</option>
+                    <option value="+44">UK (+44)</option>
+                    <option value="+91">IND (+91)</option>
+                </select>
+                <input type="tel" class="phone-input" id="authPhone" placeholder="1XXXXXXXXX">
             </div>
 
-            <div id="register-form" class="hidden">
-                <h2 style="margin-bottom: 20px; text-align: center;">Sign Up</h2>
-                <input type="text" id="reg-name" class="auth-input" placeholder="Full Name">
-                <input type="email" id="reg-email" class="auth-input" placeholder="Email Address">
-                <input type="password" id="reg-password" class="auth-input" placeholder="Password (Min 6 chars)">
-                <button class="auth-btn" onclick="appAuth.register()">Sign Up</button>
-                <div class="auth-link" onclick="appUI.toggleAuth('login')">Already have an account? Login</div>
-            </div>
-        </div>
-    </div>
-
-    <div id="dashboard-view" class="base-view">
-        
-        <div id="menu-overlay" onclick="appUI.toggleDrawer()"></div>
-        <div id="side-drawer">
-            <div class="drawer-header">
-                <div class="avatar" id="drawer-avatar" style="margin-bottom: 15px;">U</div>
-                <div id="drawer-name" style="font-weight: 600; font-size: 1.1rem;">User Name</div>
-                <div id="drawer-email" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 5px;">user@email.com</div>
-            </div>
-            <div class="drawer-menu">
-                <div class="drawer-item" onclick="appUI.navTo('profile-view')"><i class="fas fa-user-circle"></i> My Profile</div>
-                <div class="drawer-item" onclick="appUI.navTo('settings-view')"><i class="fas fa-cog"></i> Settings</div>
-                <div class="drawer-item" onclick="appAuth.logout()" style="color: var(--danger);"><i class="fas fa-sign-out-alt" style="color: var(--danger);"></i> Log Out</div>
-            </div>
-        </div>
-
-        <div class="header">
-            <button class="icon-btn" onclick="appUI.toggleDrawer()"><i class="fas fa-bars"></i></button>
-            <div class="header-title">Fluxgram</div>
-            <button class="icon-btn"><i class="fas fa-search"></i></button>
+            <div id="recaptcha-container"></div>
+            <button class="auth-btn" onclick="Auth.sendOTP()">SEND CODE</button>
         </div>
         
-        <div class="search-bar">
-            <div class="search-input-wrap">
-                <i class="fas fa-search" style="color:var(--text-muted)"></i>
-                <input type="text" id="global-search" placeholder="Search users by email..." oninput="appChat.searchUsers()">
+        <div class="auth-card hidden" id="step-otp">
+            <div class="auth-logo"><i class="fas fa-bolt"></i></div>
+            <h2 class="auth-title">Enter Code</h2>
+            <div class="phone-input-group">
+                <input type="number" id="authCode" class="phone-input" placeholder="6-digit code">
             </div>
+            <button class="auth-btn" onclick="Auth.verifyOTP()">VERIFY</button>
         </div>
-
-        <div class="chat-list" id="chat-list">
-            <div style="padding:20px; text-align:center; color:var(--text-muted);">Loading chats...</div>
-        </div>
-
-        <div class="fab" onclick="document.getElementById('global-search').focus()"><i class="fas fa-comment-dots"></i></div>
-    </div>
-
-    <div id="chat-view" class="view">
-        <div class="header">
-            <div style="display:flex; align-items:center; gap:10px; flex:1; overflow:hidden;" onclick="appUI.navTo('profile-view')">
-                <button class="icon-btn" onclick="appUI.navBack(event)"><i class="fas fa-arrow-left"></i></button>
-                <div class="avatar" id="active-chat-avatar" style="width:40px;height:40px;font-size:1rem;"></div>
-                <div style="overflow:hidden;">
-                    <div id="active-chat-name" style="font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Name</div>
-                    <div id="active-chat-status" class="typing-status">last seen recently</div>
-                </div>
+        
+        <div class="auth-card hidden" id="step-profile">
+            <h2 class="auth-title">Setup Profile</h2>
+            <div class="phone-input-group">
+                <input type="text" id="setupName" class="phone-input" placeholder="Full Name">
             </div>
-            <div style="display:flex;">
-                <button class="icon-btn" onclick="appCall.startCall('Audio')"><i class="fas fa-phone-alt"></i></button>
-                <button class="icon-btn" onclick="appCall.startCall('Video')"><i class="fas fa-video"></i></button>
-                <button class="icon-btn"><i class="fas fa-ellipsis-v"></i></button>
+            <div class="phone-input-group">
+                <input type="text" id="setupUsername" class="phone-input" placeholder="Username (e.g. flux_user)">
             </div>
-        </div>
-
-        <div class="chat-bg">
-            <div class="messages-container" id="messages-container">
-                </div>
-
-            <div class="input-area">
-                <input type="file" id="media-upload" accept="image/*" class="hidden" onchange="appChat.uploadMedia(event)">
-                <button class="icon-btn" onclick="document.getElementById('media-upload').click()"><i class="fas fa-paperclip"></i></button>
-                <div class="input-wrapper">
-                    <textarea id="msg-input" class="msg-input" rows="1" placeholder="Write a message..." oninput="appChat.handleTyping()"></textarea>
-                </div>
-                <button class="send-btn" onclick="appChat.sendMessage()"><i class="fas fa-paper-plane"></i></button>
-            </div>
+            <button class="auth-btn" onclick="Auth.saveProfile()">Start Messaging</button>
         </div>
     </div>
 
-    <div id="profile-view" class="view">
-        <div class="header">
-            <button class="icon-btn" onclick="appUI.navBack()"><i class="fas fa-arrow-left"></i></button>
-            <div class="header-title">Edit Profile</div>
+    <div class="base-layer">
+        
+        <div class="overlay" id="mainOverlay" onclick="UI.toggleDrawer()"></div>
+        <div class="drawer-menu" id="drawerMenu">
+            <div class="dm-header">
+                <div class="dm-avatar" id="drAvatar">U</div>
+                <div class="dm-name" id="drName">User</div>
+                <div class="dm-phone" id="drPhone">+880</div>
+            </div>
+            <div class="dm-list">
+                <div class="list-item" onclick="alert('Groups coming soon')"><i class="fas fa-users list-icon"></i><div class="list-text">New Group</div></div>
+                <div class="list-item" onclick="alert('Contacts syncing...')"><i class="fas fa-user-friends list-icon"></i><div class="list-text">Contacts</div></div>
+                <div class="list-item" onclick="UI.openView('view-settings')"><i class="fas fa-cog list-icon"></i><div class="list-text">Settings</div></div>
+                <div class="list-item" onclick="Auth.logout()"><i class="fas fa-sign-out-alt list-icon" style="color:var(--danger)"></i><div class="list-text" style="color:var(--danger)">Log Out</div></div>
+            </div>
         </div>
-        <div style="padding: 20px; overflow-y: auto;">
-            <div style="text-align: center; margin-bottom: 30px;">
-                <div class="avatar" id="edit-avatar" style="width:100px; height:100px; font-size:3rem; margin:0 auto 15px;">U</div>
+
+        <div class="sidebar" id="sidebar">
+            <div class="search-container">
+                <button class="btn-icon" onclick="UI.toggleDrawer()"><i class="fas fa-bars"></i></button>
+                <div class="search-box">
+                    <i class="fas fa-search" style="color:var(--text-muted)"></i>
+                    <input type="text" id="searchInput" placeholder="Search user by exact phone (+880...)" oninput="Chat.searchGlobal()">
+                </div>
             </div>
-            <div style="margin-bottom: 20px;">
-                <label style="color:var(--accent); font-size:0.85rem; display:block; margin-bottom:5px;">Display Name</label>
-                <input type="text" id="edit-name" class="auth-input" style="background:var(--bg-surface);">
+            
+            <div id="searchResults" class="search-results hidden"></div>
+
+            <div class="chat-list" id="chatList">
+                <div style="padding:20px; text-align:center; color:var(--text-muted);">Loading chats...</div>
             </div>
-            <div style="margin-bottom: 20px;">
-                <label style="color:var(--accent); font-size:0.85rem; display:block; margin-bottom:5px;">Bio</label>
-                <input type="text" id="edit-bio" class="auth-input" style="background:var(--bg-surface);" placeholder="A few words about you">
+            
+            <div class="fab-main" onclick="document.getElementById('searchInput').focus()"><i class="fas fa-pen"></i></div>
+        </div>
+
+        <div class="chat-area" id="chatArea">
+            <div id="emptyChat" style="height:100%; display:flex; align-items:center; justify-content:center; flex-direction:column; color:var(--text-muted);">
+                <div style="background:rgba(0,0,0,0.3); padding:15px 30px; border-radius:20px;">Select a chat to start messaging</div>
             </div>
-            <button class="auth-btn" onclick="appAuth.updateProfile()">Save Changes</button>
+
+            <div id="activeChat" class="hidden" style="height:100%; flex-direction:column;">
+                <div class="chat-top-bar" onclick="UI.openView('view-chat-info')">
+                    <div class="ct-left">
+                        <i class="fas fa-arrow-left mobile-back" onclick="UI.closeChat(event)"></i>
+                        <div class="ct-avatar" id="activeAvatar" style="background: var(--primary);"></div>
+                        <div class="ct-info">
+                            <div class="ct-name" id="activeName">Name</div>
+                            <div class="ct-status online" id="activeStatus">online</div>
+                        </div>
+                    </div>
+                    <div style="display:flex;">
+                        <button class="btn-icon" onclick="event.stopPropagation(); UI.showCall('Audio')"><i class="fas fa-phone-alt"></i></button>
+                        <button class="btn-icon" onclick="event.stopPropagation(); UI.showCall('Video')"><i class="fas fa-video"></i></button>
+                        <button class="btn-icon" onclick="event.stopPropagation();"><i class="fas fa-ellipsis-v"></i></button>
+                    </div>
+                </div>
+
+                <div class="msg-scroll" id="msgScroll">
+                    </div>
+
+                <div class="input-bar">
+                    <i class="fas fa-paperclip attach-btn" onclick="document.getElementById('fileInput').click()"></i>
+                    <input type="file" id="fileInput" class="hidden" onchange="Chat.uploadFile(event)">
+                    
+                    <div class="input-field">
+                        <textarea id="msgInput" rows="1" placeholder="Write a message..."></textarea>
+                    </div>
+                    <button class="mic-btn" id="sendBtn" onclick="Chat.sendMessage()">
+                        <i class="fas fa-microphone" id="sendIcon"></i>
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div id="settings-view" class="view">
-        <div class="header">
-            <button class="icon-btn" onclick="appUI.navBack()"><i class="fas fa-arrow-left"></i></button>
+    <div class="view-layer" id="view-chat-info">
+        <div class="app-header">
+            <i class="fas fa-arrow-left btn-icon" onclick="UI.closeView('view-chat-info')"></i>
+            <div class="header-title">Profile Info</div>
+        </div>
+        <div class="info-header">
+            <div class="info-avatar" id="infoAvatar">U</div>
+            <div class="info-name" id="infoName">Name <i class="fas fa-check-circle verified-badge"></i></div>
+            <div class="info-status" id="infoBio">Bio</div>
+        </div>
+        <div class="settings-block" style="margin-top:0;">
+            <div class="list-item"><i class="fas fa-info-circle list-icon"></i><div class="list-text" id="infoPhone">+880<div class="list-sub">Mobile</div></div></div>
+            <div class="list-item"><i class="fas fa-at list-icon"></i><div class="list-text" id="infoUser">@username<div class="list-sub">Username</div></div></div>
+        </div>
+    </div>
+
+    <div class="view-layer" id="view-settings">
+        <div class="app-header">
+            <i class="fas fa-arrow-left btn-icon" onclick="UI.closeView('view-settings')"></i>
             <div class="header-title">Settings</div>
         </div>
-        <div style="padding: 0; overflow-y: auto;">
-            <div class="list-item" onclick="appUI.toggleTheme()">
-                <div class="icon-btn" style="background:var(--primary); color:white; margin-right:15px;"><i class="fas fa-moon"></i></div>
-                <div class="list-info">
-                    <div class="chat-name">Dark Mode</div>
-                    <div class="chat-time">Toggle app theme</div>
-                </div>
+        <div style="flex:1; overflow-y:auto; padding-bottom: 20px;">
+            <div class="info-header" style="border-bottom:none;">
+                <div class="info-avatar" id="myAvatar">M</div>
+                <div class="info-name" id="myName">My Name</div>
+                <div class="info-status" id="myPhone">+880</div>
             </div>
-            <div class="list-item" onclick="appUI.showToast('Notifications enabled.', 'success')">
-                <div class="icon-btn" style="background:var(--accent); color:var(--bg-base); margin-right:15px;"><i class="fas fa-bell"></i></div>
-                <div class="list-info">
-                    <div class="chat-name">Notifications</div>
-                    <div class="chat-time">Message alerts and sounds</div>
-                </div>
+            
+            <div class="section-header">Account</div>
+            <div class="settings-block">
+                <div class="list-item"><div class="list-text"><input type="text" id="editName" class="phone-input" style="padding:0;color:white;" placeholder="Edit Name"><div class="list-sub">Name</div></div></div>
+                <div class="list-item"><div class="list-text"><input type="text" id="editBio" class="phone-input" style="padding:0;color:white;" placeholder="Edit Bio"><div class="list-sub">Bio</div></div></div>
+                <div class="list-item" onclick="Auth.updateSettings()"><i class="fas fa-save list-icon" style="color:var(--accent)"></i><div class="list-text" style="color:var(--accent)">Save Changes</div></div>
+            </div>
+
+            <div class="section-header">Preferences</div>
+            <div class="settings-block">
+                <div class="list-item" onclick="UI.toggleTheme()"><i class="fas fa-moon list-icon"></i><div class="list-text">Dark Mode Toggle</div></div>
             </div>
         </div>
     </div>
 
-    <div id="call-overlay" class="hidden">
-        <div class="call-info">
-            <div class="call-avatar" id="call-avatar">N</div>
-            <div class="call-name" id="call-name">Name</div>
-            <div class="call-status" id="call-status">Calling...</div>
+    <div id="call-screen" class="hidden">
+        <div style="text-align:center;">
+            <div class="info-avatar" id="callAvatar" style="animation: pulse 1.5s infinite; background:var(--primary);">C</div>
+            <h2 id="callName" style="font-size:2.5rem; font-weight:500; color:white;">Name</h2>
+            <p id="callStatus" style="color:var(--accent); margin-top:10px;">Ringing...</p>
         </div>
-        <div class="call-controls" id="call-controls-outgoing">
-            <div class="call-btn btn-action" onclick="appUI.showToast('Microphone muted', '')"><i class="fas fa-microphone-slash"></i></div>
-            <div class="call-btn btn-end" onclick="appCall.endCall()"><i class="fas fa-phone-slash"></i></div>
-            <div class="call-btn btn-action" onclick="appUI.showToast('Speaker enabled', '')"><i class="fas fa-volume-up"></i></div>
-        </div>
-        <div class="call-controls hidden" id="call-controls-incoming">
-            <div class="call-btn btn-end" onclick="appCall.endCall()"><i class="fas fa-phone-slash"></i></div>
-            <div class="call-btn btn-accept" onclick="appCall.acceptCall()"><i class="fas fa-phone"></i></div>
+        <div style="display:flex; gap:30px;">
+            <div class="call-btn" style="background: rgba(255,255,255,0.2);" onclick="alert('Mic Muted')"><i class="fas fa-microphone-slash"></i></div>
+            <div class="call-btn" style="background: var(--danger);" onclick="UI.hideCall()"><i class="fas fa-phone-slash"></i></div>
+            <div class="call-btn" style="background: rgba(255,255,255,0.2);" onclick="alert('Speaker On')"><i class="fas fa-volume-up"></i></div>
         </div>
     </div>
 
@@ -310,11 +336,11 @@
 <script type="module">
     // --- 1. FIREBASE IMPORTS ---
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { getFirestore, doc, setDoc, getDoc, collection, query, where, onSnapshot, addDoc, serverTimestamp, orderBy, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getAuth, RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc, getDocs, collection, addDoc, updateDoc, onSnapshot, query, where, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
-    // --- 2. FIREBASE CONFIGURATION ---
+    // --- 2. CONFIGURATION ---
     const firebaseConfig = {
         apiKey: "AIzaSyCsbZ1fqDivv8OyUiTcaEMcpZlJlM1TI6Y",
         authDomain: "fluxgram-87009.firebaseapp.com",
@@ -324,212 +350,266 @@
         appId: "1:698836385253:web:c40e67ee9006cff536830c"
     };
 
-    // Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
     const storage = getStorage(app);
 
     // --- 3. GLOBAL STATE ---
-    window.AppState = {
-        currentUser: null,
+    window.State = {
+        user: null,
         userData: null,
         activeChatId: null,
         activeChatUser: null,
-        unsubMessages: null,
         unsubChats: null,
-        typingTimeout: null
+        unsubMessages: null,
+        confirmationResult: null
     };
 
-    // --- 4. UI ENGINE (Routing & UX) ---
-    window.appUI = {
-        viewHistory: [],
-        
-        toggleLoader: (show) => {
-            document.getElementById('global-loader').classList.toggle('hidden', !show);
-        },
-        
-        showToast: (msg, type = '') => {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            toast.innerHTML = msg;
-            container.appendChild(toast);
-            setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
-        },
+    // The CEO Profile Data
+    const CEO_PROFILE = {
+        uid: "ceo_kawchur_id", // Pre-defined ID for CEO
+        name: "KAWCHUR",
+        username: "@kawchur",
+        phone: "+8801902397621",
+        bio: "Founder & CEO of Fluxgram",
+        verified: true,
+        isOnline: true
+    };
 
-        toggleAuth: (mode) => {
-            document.getElementById('login-form').classList.toggle('hidden', mode === 'register');
-            document.getElementById('register-form').classList.toggle('hidden', mode === 'login');
-        },
-
+    // --- 4. UI CONTROLLER ---
+    window.UI = {
         toggleDrawer: () => {
-            document.getElementById('side-drawer').classList.toggle('open');
-            document.getElementById('menu-overlay').classList.toggle('active');
+            document.getElementById('drawerMenu').classList.toggle('open');
+            document.getElementById('mainOverlay').style.display = document.getElementById('drawerMenu').classList.contains('open') ? 'block' : 'none';
         },
-
-        toggleTheme: () => {
-            document.body.classList.toggle('light-mode');
-            appUI.showToast("Theme updated!");
+        openView: (id) => {
+            document.getElementById(id).classList.add('active');
+            if(document.getElementById('drawerMenu').classList.contains('open')) UI.toggleDrawer();
         },
-
-        navTo: (viewId) => {
-            if(document.getElementById('side-drawer').classList.contains('open')) appUI.toggleDrawer();
-            document.getElementById(viewId).classList.add('active');
-            appUI.viewHistory.push(viewId);
-        },
-
-        navBack: (e) => {
+        closeView: (id) => document.getElementById(id).classList.remove('active'),
+        closeChat: (e) => {
             if(e) e.stopPropagation();
-            if(appUI.viewHistory.length > 0) {
-                const currentView = appUI.viewHistory.pop();
-                document.getElementById(currentView).classList.remove('active');
-                if(currentView === 'chat-view') {
-                    AppState.activeChatId = null;
-                    if(AppState.unsubMessages) AppState.unsubMessages();
-                }
-            }
+            document.getElementById('chatArea').classList.remove('active');
+            State.activeChatId = null;
         },
-
-        autoResizeInput: () => {
-            const el = document.getElementById('msg-input');
-            el.style.height = 'auto';
-            el.style.height = (el.scrollHeight) + 'px';
-        }
+        toggleTheme: () => document.body.classList.toggle('light-mode'),
+        showCall: (type) => {
+            if(!State.activeChatUser) return;
+            document.getElementById('call-screen').classList.remove('hidden');
+            document.getElementById('callName').innerText = State.activeChatUser.name;
+            document.getElementById('callAvatar').innerText = State.activeChatUser.name.charAt(0);
+            document.getElementById('callStatus').innerText = `Fluxgram ${type} Call...`;
+        },
+        hideCall: () => document.getElementById('call-screen').classList.add('hidden')
     };
-    document.getElementById('msg-input').addEventListener('input', appUI.autoResizeInput);
 
-    // --- 5. AUTHENTICATION LOGIC ---
-    window.appAuth = {
-        login: async () => {
-            const e = document.getElementById('login-email').value.trim();
-            const p = document.getElementById('login-password').value.trim();
-            if(!e || !p) return appUI.showToast("Enter email and password", "error");
-            appUI.toggleLoader(true);
-            try {
-                await signInWithEmailAndPassword(auth, e, p);
-                appUI.showToast("Welcome back!", "success");
-            } catch (err) {
-                appUI.showToast(err.message, "error");
+    // --- 5. AUTH LOGIC (OTP & Profile) ---
+    window.onload = () => {
+        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'normal' });
+
+        onAuthStateChanged(auth, async (user) => {
+            if(user) {
+                State.user = user;
+                const userDoc = await getDoc(doc(db, "users", user.uid));
+                
+                if(!userDoc.exists() || !userDoc.data().name) {
+                    // New user -> Profile Setup
+                    document.getElementById('step-phone').classList.add('hidden');
+                    document.getElementById('step-otp').classList.add('hidden');
+                    document.getElementById('step-profile').classList.remove('hidden');
+                } else {
+                    // Existing User
+                    document.getElementById('auth-screen').classList.add('hidden');
+                    Auth.initApp(userDoc.data());
+                }
+            } else {
+                document.getElementById('auth-screen').classList.remove('hidden');
+                document.getElementById('step-phone').classList.remove('hidden');
+                document.getElementById('step-otp').classList.add('hidden');
+                document.getElementById('step-profile').classList.add('hidden');
             }
-            appUI.toggleLoader(false);
+        });
+    };
+
+    window.Auth = {
+        sendOTP: () => {
+            const code = document.getElementById('countryCode').value;
+            const phone = document.getElementById('authPhone').value.trim();
+            if(!phone) return alert("Enter phone number");
+
+            const fullPhone = code + phone;
+            window.recaptchaVerifier.render();
+            signInWithPhoneNumber(auth, fullPhone, window.recaptchaVerifier)
+                .then(result => {
+                    State.confirmationResult = result;
+                    document.getElementById('step-phone').classList.add('hidden');
+                    document.getElementById('step-otp').classList.remove('hidden');
+                })
+                .catch(err => alert("Error: " + err.message));
         },
 
-        register: async () => {
-            const n = document.getElementById('reg-name').value.trim();
-            const e = document.getElementById('reg-email').value.trim();
-            const p = document.getElementById('reg-password').value.trim();
-            if(!n || !e || p.length < 6) return appUI.showToast("Fill all fields. Password min 6 chars.", "error");
-            appUI.toggleLoader(true);
-            try {
-                const res = await createUserWithEmailAndPassword(auth, e, p);
-                await setDoc(doc(db, "users", res.user.uid), {
-                    uid: res.user.uid, email: e, name: n, bio: "Available", isOnline: true, lastSeen: serverTimestamp()
-                });
-                appUI.showToast("Account created successfully!", "success");
-            } catch (err) {
-                appUI.showToast(err.message, "error");
-            }
-            appUI.toggleLoader(false);
+        verifyOTP: () => {
+            const code = document.getElementById('authCode').value.trim();
+            if(!code) return alert("Enter OTP");
+            
+            State.confirmationResult.confirm(code).catch(err => alert("Invalid OTP!"));
+        },
+
+        saveProfile: async () => {
+            const name = document.getElementById('setupName').value.trim();
+            const username = document.getElementById('setupUsername').value.trim();
+            if(!name || !username) return alert("Fill all fields!");
+
+            const userData = {
+                uid: auth.currentUser.uid,
+                phone: auth.currentUser.phoneNumber,
+                name: name,
+                username: "@" + username.replace('@','').toLowerCase(),
+                bio: "Available on Fluxgram",
+                verified: false,
+                isOnline: true,
+                lastSeen: serverTimestamp()
+            };
+
+            await setDoc(doc(db, "users", auth.currentUser.uid), userData);
+            
+            // Auto create chat with CEO KAWCHUR upon registration
+            await setDoc(doc(db, "users", CEO_PROFILE.uid), CEO_PROFILE, {merge: true});
+            const chatId = auth.currentUser.uid < CEO_PROFILE.uid ? `${auth.currentUser.uid}_${CEO_PROFILE.uid}` : `${CEO_PROFILE.uid}_${auth.currentUser.uid}`;
+            await setDoc(doc(db, "chats", chatId), {
+                members: [auth.currentUser.uid, CEO_PROFILE.uid],
+                updatedAt: serverTimestamp(),
+                lastMessage: "Welcome to Fluxgram!"
+            }, {merge:true});
+
+            document.getElementById('auth-screen').classList.add('hidden');
+            Auth.initApp(userData);
+        },
+
+        initApp: (userData) => {
+            State.userData = userData;
+            
+            // Populate UI
+            document.getElementById('drName').innerText = userData.name;
+            document.getElementById('drPhone').innerText = userData.phone;
+            document.getElementById('drAvatar').innerText = userData.name.charAt(0);
+            
+            document.getElementById('myName').innerText = userData.name;
+            document.getElementById('myPhone').innerText = userData.phone;
+            document.getElementById('myAvatar').innerText = userData.name.charAt(0);
+            
+            document.getElementById('editName').value = userData.name;
+            document.getElementById('editBio').value = userData.bio;
+
+            // Presence System
+            setDoc(doc(db, "users", State.user.uid), { isOnline: true }, { merge: true });
+            window.addEventListener('beforeunload', () => setDoc(doc(db, "users", State.user.uid), { isOnline: false, lastSeen: serverTimestamp() }, { merge: true }));
+
+            Chat.loadChatList();
+        },
+
+        updateSettings: async () => {
+            const name = document.getElementById('editName').value.trim();
+            const bio = document.getElementById('editBio').value.trim();
+            if(!name) return;
+            
+            await setDoc(doc(db, "users", State.user.uid), { name, bio }, { merge: true });
+            document.getElementById('myName').innerText = name;
+            document.getElementById('drName').innerText = name;
+            document.getElementById('drAvatar').innerText = name.charAt(0);
+            document.getElementById('myAvatar').innerText = name.charAt(0);
+            UI.closeView('view-settings');
         },
 
         logout: async () => {
-            appUI.toggleDrawer();
-            appUI.toggleLoader(true);
-            if(AppState.currentUser) {
-                await setDoc(doc(db, "users", AppState.currentUser.uid), { isOnline: false, lastSeen: serverTimestamp() }, { merge: true });
-            }
-            await signOut(auth);
-            appUI.toggleLoader(false);
-            window.location.reload(); // Hard reset SPA state
-        },
-
-        resetPassword: async () => {
-            const e = document.getElementById('login-email').value.trim();
-            if(!e) return appUI.showToast("Enter your email in the login field first.", "error");
-            try {
-                await sendPasswordResetEmail(auth, e);
-                appUI.showToast("Password reset email sent!", "success");
-            } catch(err) { appUI.showToast(err.message, "error"); }
-        },
-
-        updateProfile: async () => {
-            const n = document.getElementById('edit-name').value.trim();
-            const b = document.getElementById('edit-bio').value.trim();
-            if(!n) return;
-            appUI.toggleLoader(true);
-            await setDoc(doc(db, "users", AppState.currentUser.uid), { name: n, bio: b }, { merge: true });
-            appUI.showToast("Profile Updated", "success");
-            appUI.navBack();
-            appUI.toggleLoader(false);
+            UI.toggleDrawer();
+            await setDoc(doc(db, "users", State.user.uid), { isOnline: false, lastSeen: serverTimestamp() }, { merge: true });
+            signOut(auth);
+            window.location.reload();
         }
     };
 
-    // --- 6. AUTH STATE OBSERVER ---
-    onAuthStateChanged(auth, async (user) => {
-        if (user) {
-            AppState.currentUser = user;
-            // Fetch User Data
-            onSnapshot(doc(db, "users", user.uid), (docSnap) => {
-                if(docSnap.exists()){
-                    AppState.userData = docSnap.data();
-                    // Update UI Globally
-                    document.getElementById('drawer-name').innerText = AppState.userData.name;
-                    document.getElementById('drawer-email').innerText = AppState.userData.email;
-                    document.getElementById('drawer-avatar').innerText = AppState.userData.name.charAt(0);
-                    document.getElementById('edit-name').value = AppState.userData.name;
-                    document.getElementById('edit-bio').value = AppState.userData.bio;
-                    document.getElementById('edit-avatar').innerText = AppState.userData.name.charAt(0);
-                }
-            });
+    // --- 6. CHAT & SEARCH LOGIC ---
+    window.Chat = {
+        searchGlobal: async () => {
+            const term = document.getElementById('searchInput').value.trim();
+            const resBox = document.getElementById('searchResults');
             
-            // Set Presence
-            setDoc(doc(db, "users", user.uid), { isOnline: true }, { merge: true });
-            window.addEventListener('beforeunload', () => setDoc(doc(db, "users", user.uid), { isOnline: false, lastSeen: serverTimestamp() }, { merge: true }));
+            if(term.length < 4 || !term.startsWith('+')) {
+                resBox.classList.add('hidden');
+                document.getElementById('chatList').classList.remove('hidden');
+                return;
+            }
 
-            document.getElementById('auth-view').classList.remove('active');
-            appChat.loadChatList();
-        } else {
-            document.getElementById('auth-view').classList.add('active');
-        }
-    });
+            resBox.classList.remove('hidden');
+            document.getElementById('chatList').classList.add('hidden');
+            resBox.innerHTML = `<div style="padding:15px; text-align:center; color:var(--text-muted);">Searching Database...</div>`;
 
-    // --- 7. CHAT LOGIC (CRUD & Realtime) ---
-    window.appChat = {
+            // Simple exact phone search
+            const q = query(collection(db, "users"), where("phone", "==", term));
+            const snaps = await getDocs(q);
+            resBox.innerHTML = '';
+            
+            snaps.forEach(docSnap => {
+                if(docSnap.id === State.user.uid) return;
+                const u = docSnap.data();
+                resBox.innerHTML += `
+                    <div class="list-item" onclick="Chat.startChat('${docSnap.id}', '${u.name}', '${u.verified||false}')">
+                        <div class="avatar">${u.name.charAt(0)}</div>
+                        <div class="list-text">${u.name} ${u.verified ? '<i class="fas fa-check-circle verified-badge"></i>' : ''}<div class="list-sub">${u.phone}</div></div>
+                    </div>
+                `;
+            });
+
+            if(resBox.innerHTML === '') resBox.innerHTML = `<div style="padding:15px; text-align:center; color:var(--text-muted);">No user found with this number.</div>`;
+        },
+
+        startChat: async (otherUid, otherName, isVerified) => {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('searchResults').classList.add('hidden');
+            document.getElementById('chatList').classList.remove('hidden');
+
+            const chatId = State.user.uid < otherUid ? `${State.user.uid}_${otherUid}` : `${otherUid}_${State.user.uid}`;
+            await setDoc(doc(db, "chats", chatId), {
+                members: [State.user.uid, otherUid],
+                updatedAt: serverTimestamp(),
+                lastMessage: "Chat created"
+            }, { merge: true });
+
+            const otherUserDoc = await getDoc(doc(db, "users", otherUid));
+            Chat.openChatView(chatId, otherUserDoc.data());
+        },
+
         loadChatList: () => {
-            const q = query(collection(db, "chats"), where("members", "array-contains", AppState.currentUser.uid), orderBy("updatedAt", "desc"));
-            AppState.unsubChats = onSnapshot(q, async (snapshot) => {
-                const list = document.getElementById('chat-list');
+            const q = query(collection(db, "chats"), where("members", "array-contains", State.user.uid), orderBy("updatedAt", "desc"));
+            State.unsubChats = onSnapshot(q, async (snapshot) => {
+                const list = document.getElementById('chatList');
                 list.innerHTML = '';
-                
-                if(snapshot.empty) list.innerHTML = `<div style="padding:20px; text-align:center; color:var(--text-muted);">No chats yet. Search a user to start.</div>`;
 
                 for (const chatDoc of snapshot.docs) {
                     const data = chatDoc.data();
-                    const otherUid = data.members.find(id => id !== AppState.currentUser.uid);
+                    const otherUid = data.members.find(id => id !== State.user.uid);
                     
-                    // Fetch other user info
                     const otherUserDoc = await getDoc(doc(db, "users", otherUid));
                     if(!otherUserDoc.exists()) continue;
                     const otherUser = otherUserDoc.data();
 
                     const timeStr = data.updatedAt ? new Date(data.updatedAt.toDate()).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '';
-                    const isTyping = data.typing && data.typing.includes(otherUid);
-
+                    
                     const div = document.createElement('div');
-                    div.className = 'list-item';
-                    div.onclick = () => appChat.openChat(chatDoc.id, otherUser);
+                    div.className = `chat-cell ${State.activeChatId === chatDoc.id ? 'active' : ''}`;
+                    div.onclick = () => Chat.openChatView(chatDoc.id, otherUser);
                     
                     div.innerHTML = `
-                        <div class="avatar">${otherUser.name.charAt(0)}</div>
-                        <div class="list-info">
-                            <div class="chat-name-row">
-                                <div class="chat-name">${otherUser.name}</div>
-                                <div class="chat-time">${timeStr}</div>
+                        <div class="c-avatar" style="background:${otherUser.verified ? 'linear-gradient(135deg, #00f3ff, #0066ff)' : 'var(--primary)'}">${otherUser.name.charAt(0)}</div>
+                        <div class="c-info">
+                            <div class="c-top">
+                                <div class="c-name">${otherUser.name} ${otherUser.verified ? '<i class="fas fa-check-circle verified-badge"></i>' : ''}</div>
+                                <div class="c-time">${timeStr}</div>
                             </div>
-                            <div class="chat-msg-row">
-                                <div class="chat-msg" style="${isTyping ? 'color:var(--accent);' : ''}">${isTyping ? 'typing...' : (data.lastMessage || 'New Chat')}</div>
-                                ${data.unreadCount && data.lastSender !== AppState.currentUser.uid ? `<div class="unread-badge">${data.unreadCount}</div>` : ''}
+                            <div class="c-bottom">
+                                <div class="c-msg">${data.lastMessage}</div>
                             </div>
                         </div>
                     `;
@@ -538,205 +618,112 @@
             });
         },
 
-        searchUsers: async () => {
-            const term = document.getElementById('global-search').value.trim().toLowerCase();
-            const list = document.getElementById('chat-list');
-            if(term.length < 3) return appChat.loadChatList(); // Restore default list
+        openChatView: (chatId, otherUser) => {
+            State.activeChatId = chatId;
+            State.activeChatUser = otherUser;
+            
+            // Header Info
+            document.getElementById('activeName').innerHTML = `${otherUser.name} ${otherUser.verified ? '<i class="fas fa-check-circle verified-badge"></i>' : ''}`;
+            document.getElementById('activeAvatar').innerText = otherUser.name.charAt(0);
+            document.getElementById('activeAvatar').style.background = otherUser.verified ? 'linear-gradient(135deg, #00f3ff, #0066ff)' : 'var(--primary)';
+            
+            // Profile Info View
+            document.getElementById('infoName').innerHTML = `${otherUser.name} ${otherUser.verified ? '<i class="fas fa-check-circle verified-badge"></i>' : ''}`;
+            document.getElementById('infoAvatar').innerText = otherUser.name.charAt(0);
+            document.getElementById('infoAvatar').style.background = otherUser.verified ? 'linear-gradient(135deg, #00f3ff, #0066ff)' : 'var(--primary)';
+            document.getElementById('infoBio').innerText = otherUser.bio || 'Available';
+            document.getElementById('infoPhone').innerHTML = `${otherUser.phone}<div class="list-sub">Mobile</div>`;
+            document.getElementById('infoUser').innerHTML = `${otherUser.username}<div class="list-sub">Username</div>`;
 
-            list.innerHTML = `<div style="padding:20px; text-align:center; color:var(--text-muted);">Searching...</div>`;
-            
-            // Simple query (In production, use Algolia or similar for fuzzy text search)
-            const q = query(collection(db, "users"));
-            const snaps = await getDocs(q);
-            list.innerHTML = '';
-            
-            snaps.forEach(docSnap => {
-                const u = docSnap.data();
-                if(u.uid === AppState.currentUser.uid) return;
-                if(u.email.toLowerCase().includes(term) || u.name.toLowerCase().includes(term)) {
-                    list.innerHTML += `
-                        <div class="list-item" onclick="appChat.startNewChat('${u.uid}')">
-                            <div class="avatar">${u.name.charAt(0)}</div>
-                            <div class="list-info">
-                                <div class="chat-name">${u.name}</div>
-                                <div class="chat-msg">${u.email}</div>
-                            </div>
-                        </div>
-                    `;
-                }
-            });
-            if(list.innerHTML === '') list.innerHTML = `<div style="padding:20px; text-align:center; color:var(--text-muted);">No users found.</div>`;
-        },
-
-        startNewChat: async (otherUid) => {
-            document.getElementById('global-search').value = '';
-            const chatId = AppState.currentUser.uid < otherUid ? `${AppState.currentUser.uid}_${otherUid}` : `${otherUid}_${AppState.currentUser.uid}`;
-            
-            await setDoc(doc(db, "chats", chatId), {
-                members: [AppState.currentUser.uid, otherUid],
-                updatedAt: serverTimestamp(),
-                lastMessage: "Chat created"
-            }, { merge: true });
-            
-            const otherUserDoc = await getDoc(doc(db, "users", otherUid));
-            appChat.openChat(chatId, otherUserDoc.data());
-        },
-
-        openChat: (chatId, otherUser) => {
-            AppState.activeChatId = chatId;
-            AppState.activeChatUser = otherUser;
-            
-            document.getElementById('active-chat-name').innerText = otherUser.name;
-            document.getElementById('active-chat-avatar').innerText = otherUser.name.charAt(0);
-            
-            // Presence Listener
+            // Presence
             onSnapshot(doc(db, "users", otherUser.uid), (d) => {
                 if(d.exists()) {
-                    const statusEl = document.getElementById('active-chat-status');
-                    statusEl.innerText = d.data().isOnline ? 'Online' : 'Offline';
-                    statusEl.style.color = d.data().isOnline ? 'var(--accent)' : 'var(--text-muted)';
+                    const isOnline = d.data().isOnline;
+                    document.getElementById('activeStatus').innerText = isOnline ? 'Online' : 'Offline';
+                    document.getElementById('activeStatus').style.color = isOnline ? 'var(--accent)' : 'var(--text-muted)';
                 }
             });
 
-            appUI.navTo('chat-view');
-            appChat.loadMessages();
+            document.getElementById('emptyChat').style.display = 'none';
+            document.getElementById('activeChat').style.display = 'flex';
+            if(window.innerWidth <= 768) document.getElementById('chatArea').classList.add('active');
+
+            Chat.loadMessages();
+            Chat.loadChatList(); // Update active state
         },
 
         loadMessages: () => {
-            if(AppState.unsubMessages) AppState.unsubMessages();
-            const container = document.getElementById('messages-container');
+            if(State.unsubMessages) State.unsubMessages();
+            const scroll = document.getElementById('msgScroll');
             
-            const q = query(collection(db, `chats/${AppState.activeChatId}/messages`), orderBy("timestamp", "asc"));
-            AppState.unsubMessages = onSnapshot(q, (snapshot) => {
-                container.innerHTML = '';
+            const q = query(collection(db, `chats/${State.activeChatId}/messages`), orderBy("timestamp", "asc"));
+            State.unsubMessages = onSnapshot(q, (snapshot) => {
+                scroll.innerHTML = '';
+                
                 snapshot.forEach(docSnap => {
                     const msg = docSnap.data();
-                    const isMe = msg.senderId === AppState.currentUser.uid;
-                    const time = msg.timestamp ? new Date(msg.timestamp.toDate()).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '';
+                    const isMe = msg.senderId === State.user.uid;
+                    const timeStr = msg.timestamp ? new Date(msg.timestamp.toDate()).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '';
                     
-                    let content = msg.text;
+                    let content = msg.text.replace(/\n/g, '<br>');
                     if(msg.type === 'image') content = `<img src="${msg.mediaUrl}" class="msg-media" onclick="window.open('${msg.mediaUrl}')">`;
 
-                    container.innerHTML += `
-                        <div class="msg-row ${isMe ? 'msg-tx' : 'msg-rx'}">
-                            <div class="msg-bubble">
+                    scroll.innerHTML += `
+                        <div class="bubble-wrap ${isMe ? 'wrap-tx' : 'wrap-rx'}">
+                            <div class="bubble ${isMe ? 'bubble-tx' : 'bubble-rx'}">
                                 ${content}
-                                <div class="msg-meta">${time} ${isMe ? '<i class="fas fa-check-double" style="color:var(--accent);"></i>' : ''}</div>
+                                <div class="b-time">${timeStr} ${isMe ? '<i class="fas fa-check-double b-tick"></i>' : ''}</div>
                             </div>
                         </div>
                     `;
                 });
-                container.scrollTop = container.scrollHeight; // Auto-scroll
-                
-                // Reset unread count if we are viewing
-                updateDoc(doc(db, "chats", AppState.activeChatId), { unreadCount: 0 });
+                setTimeout(() => scroll.scrollTop = scroll.scrollHeight, 100);
             });
         },
 
         sendMessage: async () => {
-            const input = document.getElementById('msg-input');
+            const input = document.getElementById('msgInput');
             const text = input.value.trim();
-            if(!text || !AppState.activeChatId) return;
+            if(!text || !State.activeChatId) return;
 
             input.value = '';
-            appUI.autoResizeInput();
+            input.style.height = 'auto';
+            document.getElementById('sendBtn').classList.remove('send-mode');
+            document.getElementById('sendIcon').className = 'fas fa-microphone';
 
-            await addDoc(collection(db, `chats/${AppState.activeChatId}/messages`), {
-                text, senderId: AppState.currentUser.uid, timestamp: serverTimestamp(), type: 'text'
+            await addDoc(collection(db, `chats/${State.activeChatId}/messages`), {
+                text: text, senderId: State.user.uid, timestamp: serverTimestamp(), type: 'text'
             });
-            
-            await setDoc(doc(db, "chats", AppState.activeChatId), { 
-                lastMessage: text, 
-                lastSender: AppState.currentUser.uid,
-                updatedAt: serverTimestamp(),
-                typing: [] // clear typing
-            }, { merge: true });
+            await setDoc(doc(db, "chats", State.activeChatId), { lastMessage: text, updatedAt: serverTimestamp() }, { merge: true });
         },
 
-        uploadMedia: async (e) => {
+        uploadFile: async (e) => {
             const file = e.target.files[0];
-            if(!file || !AppState.activeChatId) return;
+            if(!file || !State.activeChatId) return;
             
-            appUI.showToast("Uploading image...", "success");
-            const storageRef = ref(storage, `chats/${AppState.activeChatId}/${Date.now()}_${file.name}`);
+            const storageRef = ref(storage, `chats/${State.activeChatId}/${Date.now()}_${file.name}`);
             const uploadTask = uploadBytesResumable(storageRef, file);
             
-            uploadTask.on('state_changed', null, (error) => appUI.showToast(error.message, "error"), async () => {
+            uploadTask.on('state_changed', null, console.error, async () => {
                 const url = await getDownloadURL(uploadTask.snapshot.ref);
-                await addDoc(collection(db, `chats/${AppState.activeChatId}/messages`), {
-                    text: '', mediaUrl: url, senderId: AppState.currentUser.uid, timestamp: serverTimestamp(), type: 'image'
+                await addDoc(collection(db, `chats/${State.activeChatId}/messages`), {
+                    text: '', mediaUrl: url, senderId: State.user.uid, timestamp: serverTimestamp(), type: 'image'
                 });
-                await setDoc(doc(db, "chats", AppState.activeChatId), { lastMessage: '📷 Image', updatedAt: serverTimestamp() }, { merge: true });
+                await setDoc(doc(db, "chats", State.activeChatId), { lastMessage: '📷 Photo', updatedAt: serverTimestamp() }, { merge: true });
             });
-        },
-
-        handleTyping: () => {
-            if(!AppState.activeChatId) return;
-            // Add self to typing array
-            setDoc(doc(db, "chats", AppState.activeChatId), { typing: [AppState.currentUser.uid] }, { merge: true });
-            
-            clearTimeout(AppState.typingTimeout);
-            AppState.typingTimeout = setTimeout(() => {
-                // Remove typing status after 2 seconds
-                setDoc(doc(db, "chats", AppState.activeChatId), { typing: [] }, { merge: true });
-            }, 2000);
         }
     };
-    // Enter to send
-    document.getElementById('msg-input').addEventListener('keypress', (e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); appChat.sendMessage(); }});
 
-    // --- 8. CALL FEATURE (Mock UI Timer Engine) ---
-    window.appCall = {
-        timerInterval: null,
-        seconds: 0,
-        
-        startCall: (type) => {
-            if(!AppState.activeChatUser) return;
-            const overlay = document.getElementById('call-overlay');
-            document.getElementById('call-avatar').innerText = AppState.activeChatUser.name.charAt(0);
-            document.getElementById('call-name').innerText = AppState.activeChatUser.name;
-            document.getElementById('call-status').innerText = `Calling via ${type}...`;
-            
-            document.getElementById('call-controls-outgoing').classList.remove('hidden');
-            document.getElementById('call-controls-incoming').classList.add('hidden');
-            overlay.classList.remove('hidden');
-
-            // Simulate pickup after 3 seconds
-            setTimeout(() => {
-                if(!overlay.classList.contains('hidden')) appCall.startTimer();
-            }, 3000);
-        },
-
-        incomingCallMock: () => {
-            document.getElementById('call-status').innerText = "Incoming Video Call...";
-            document.getElementById('call-controls-outgoing').classList.add('hidden');
-            document.getElementById('call-controls-incoming').classList.remove('hidden');
-            document.getElementById('call-overlay').classList.remove('hidden');
-        },
-
-        acceptCall: () => {
-            document.getElementById('call-controls-outgoing').classList.remove('hidden');
-            document.getElementById('call-controls-incoming').classList.add('hidden');
-            appCall.startTimer();
-        },
-
-        startTimer: () => {
-            appCall.seconds = 0;
-            document.getElementById('call-status').innerText = "00:00";
-            appCall.timerInterval = setInterval(() => {
-                appCall.seconds++;
-                const mins = String(Math.floor(appCall.seconds / 60)).padStart(2, '0');
-                const secs = String(appCall.seconds % 60).padStart(2, '0');
-                document.getElementById('call-status').innerText = `${mins}:${secs}`;
-            }, 1000);
-        },
-
-        endCall: () => {
-            clearInterval(appCall.timerInterval);
-            document.getElementById('call-status').innerText = "Call Ended";
-            setTimeout(() => document.getElementById('call-overlay').classList.add('hidden'), 1000);
-        }
-    };
+    // --- Input Box UI Logic ---
+    const msgInput = document.getElementById('msgInput');
+    msgInput.addEventListener('input', function() {
+        this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px';
+        const btn = document.getElementById('sendBtn');
+        const icon = document.getElementById('sendIcon');
+        if(this.value.trim()) { btn.classList.add('send-mode'); icon.className = 'fas fa-paper-plane'; } 
+        else { btn.classList.remove('send-mode'); icon.className = 'fas fa-microphone'; }
+    });
+    msgInput.addEventListener('keypress', (e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); Chat.sendMessage(); }});
 
 </script>
 </body>
