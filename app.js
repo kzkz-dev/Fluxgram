@@ -1,8 +1,8 @@
 // ============================================================================
-// app.js - Fluxgram Engine (Base64 Images + Instant Email Update Edition)
+// app.js - Fluxgram Engine (Images, Voice, Emojis, Video Calls & Dates Added)
 // ============================================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateEmail } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateEmail, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, getDocs, collection, addDoc, updateDoc, deleteDoc, onSnapshot, query, where, orderBy, serverTimestamp, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -30,13 +30,18 @@ const formatTime = (ts) => {
     if (typeof ts.toDate === 'function') return ts.toDate().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
     return '';
 };
+const formatDate = (ts) => {
+    if (!ts) return '';
+    if (typeof ts.toDate === 'function') return ts.toDate().toLocaleDateString('en-US', {month:'long', day:'numeric'});
+    return '';
+};
 const getMillis = (ts) => {
     if (!ts) return Date.now(); 
     if (typeof ts.toMillis === 'function') return ts.toMillis();
     return 0;
 };
 
-// --- UTILS & BASE64 COMPRESSOR ---
+// --- UTILS & COMPRESSORS ---
 window.Fluxgram.utils = {
     isUsernameUnique: async (username, currentUsername = null) => {
         const u = username.toLowerCase().replace('@', '');
@@ -51,17 +56,18 @@ window.Fluxgram.utils = {
         if(photoURL && photoURL.length > 10) return `<img src="${photoURL}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;" class="${sizeClass}">`;
         return `<span class="${sizeClass}">${(fallbackName||'U').charAt(0).toUpperCase()}</span>`;
     },
-    compressToBase64: (dataUrl, maxWidth = 150, quality = 0.6) => {
+    compressToBase64: (dataUrl, maxWidth = 400, quality = 0.6) => {
         return new Promise((resolve) => {
             const img = new Image();
             img.src = dataUrl;
             img.onload = () => {
                 const canvas = document.createElement('canvas');
-                const scaleSize = maxWidth / img.width;
-                canvas.width = maxWidth;
-                canvas.height = img.height * scaleSize;
+                let width = img.width; let height = img.height;
+                if (width > height) { if (width > maxWidth) { height = Math.round((height * maxWidth) / width); width = maxWidth; } } 
+                else { if (height > maxWidth) { width = Math.round((width * maxWidth) / height); height = maxWidth; } }
+                canvas.width = width; canvas.height = height;
                 const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0, width, height);
                 resolve(canvas.toDataURL('image/jpeg', quality));
             };
             img.onerror = () => resolve(dataUrl);
@@ -250,34 +256,31 @@ window.Fluxgram.profile = {
         } catch(e) { UI.toast(e.message, "error"); } finally { UI.loader(false); }
     },
 
-    // 🔥 INSTANT EMAIL UPDATE 🔥
     changeEmail: async () => {
+        const pass = document.getElementById('email-change-password').value;
         const newEmail = document.getElementById('email-change-new').value.trim();
-        if(!newEmail) return UI.toast("Enter a new email address", "error");
+        if(!pass || !newEmail) return UI.toast("Enter password and new email", "error");
         
         UI.loader(true);
         try {
+            const credential = EmailAuthProvider.credential(State.currentUser.email, pass);
+            await reauthenticateWithCredential(auth.currentUser, credential);
             await updateEmail(auth.currentUser, newEmail);
             await setDoc(doc(db, "users", State.currentUser.uid), { email: newEmail }, { merge: true });
             
             document.getElementById('email-change-modal').classList.add('hidden'); 
             document.getElementById('display-email').innerText = newEmail; 
-            UI.toast("Email updated instantly!", "success");
+            UI.toast("Email updated successfully!", "success");
             
+            document.getElementById('email-change-password').value = '';
             document.getElementById('email-change-new').value = '';
 
         } catch(e) { 
-            console.error("Email Update Error:", e);
             let errorMsg = e.message;
-            if (e.code === 'auth/requires-recent-login') {
-                errorMsg = "Security Alert: Please Log Out and Log In again to change your email!";
-            } else if (e.code === 'auth/email-already-in-use') {
-                errorMsg = "This email is already registered to another account!";
-            }
+            if (e.code === 'auth/email-already-in-use') errorMsg = "This email is already registered!";
+            else if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') errorMsg = "Incorrect current password!";
             UI.toast(errorMsg, "error"); 
-        } finally { 
-            UI.loader(false); 
-        }
+        } finally { UI.loader(false); }
     },
 
     openChatEdit: () => {
@@ -328,7 +331,6 @@ window.Fluxgram.profile = {
     }
 };
 
-// --- DASHBOARD LOGIC ---
 window.Fluxgram.dash = {
     search: async () => {
         const term = document.getElementById('search-input').value.trim().toLowerCase().replace('@', '');
@@ -424,6 +426,10 @@ window.Fluxgram.dash = {
     }
 };
 
+// --- CHAT LOGIC (IMAGES, VOICE & EMOJIS ADDED) ---
+let voiceRecorder;
+let voiceChunks = [];
+
 window.Fluxgram.chat = {
     init: async () => {
         const otherUid = UI.getParam('uid');       
@@ -445,11 +451,12 @@ window.Fluxgram.chat = {
                         document.getElementById('chat-status').innerText = `${data.members.length} members`;
                         
                         document.getElementById('btn-call-audio').classList.add('hidden');
+                        document.getElementById('btn-call-video').classList.add('hidden');
+                        
                         const addBtn = document.getElementById('btn-add-member');
                         if(addBtn) { if (data.admin === State.currentUser.uid) addBtn.classList.remove('hidden'); else addBtn.classList.add('hidden'); }
                         if(data.type === 'channel' && data.admin !== State.currentUser.uid) document.getElementById('input-area').classList.add('hidden'); else document.getElementById('input-area').classList.remove('hidden');
                         if(data.lastSender !== State.currentUser.uid) updateDoc(doc(db, "chats", existingChatId), { unreadCount: 0 });
-                        if(!document.getElementById('profile-view').classList.contains('hidden')) UI.showProfile();
                     } else { window.location.replace('dashboard.html'); }
                 });
             } else {
@@ -468,38 +475,66 @@ window.Fluxgram.chat = {
                         document.getElementById('chat-name').innerText = u.username || u.name || 'User';
                         document.getElementById('chat-avatar').innerHTML = Utils.renderAvatarHTML(u.photoURL, u.username || u.name);
                         document.getElementById('chat-status').innerText = u.isOnline ? 'Online' : 'Offline';
-                        if(!document.getElementById('profile-view').classList.contains('hidden')) UI.showProfile();
                     }
                 });
             }
 
             const msgInput = document.getElementById('msg-input');
             if(msgInput) {
-                msgInput.addEventListener('input', () => { UI.autoResize(msgInput); });
+                msgInput.addEventListener('input', () => { 
+                    UI.autoResize(msgInput); 
+                    // Toggle Send vs Mic Button
+                    if(msgInput.value.trim().length > 0) {
+                        document.getElementById('btn-send-text').classList.remove('hidden');
+                        document.getElementById('btn-record-voice').classList.add('hidden');
+                    } else {
+                        document.getElementById('btn-send-text').classList.add('hidden');
+                        document.getElementById('btn-record-voice').classList.remove('hidden');
+                    }
+                });
                 msgInput.addEventListener('keypress', (e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); window.Fluxgram.chat.send(); } });
             }
 
             window.Fluxgram.chat.loadMessages();
         } catch(error) { UI.toast("Failed to load chat: " + error.message, "error"); }
     },
+    
+    // 🔥 DATE DIVIDER ADDED 🔥
     loadMessages: () => {
         const container = document.getElementById('messages-container');
         if(!container) return;
         const q = query(collection(db, `chats/${State.activeChatId}/messages`), orderBy("timestamp", "asc"));
         State.unsubMessages = onSnapshot(q, (snapshot) => {
             container.innerHTML = '';
+            let lastDateStr = '';
+            
             snapshot.forEach(docSnap => {
                 const msg = docSnap.data();
                 const isMe = msg.senderId === State.currentUser.uid;
                 const timeStr = formatTime(msg.timestamp);
-                let textContent = Utils.parseMentions((msg.text||'').replace(/\n/g, '<br>'));
+                const dateStr = formatDate(msg.timestamp);
+                
+                // Show Date Divider if new day
+                if(dateStr && dateStr !== lastDateStr) {
+                    container.innerHTML += `<div class="date-divider"><span>${dateStr}</span></div>`;
+                    lastDateStr = dateStr;
+                }
+
+                // Parse content based on type (Text, Image, Audio)
+                let contentHTML = '';
+                if(msg.text) contentHTML += Utils.parseMentions((msg.text||'').replace(/\n/g, '<br>'));
+                if(msg.image) contentHTML += `<img src="${msg.image}" class="chat-img" onclick="window.open('${msg.image}')">`;
+                if(msg.audio) contentHTML += `<audio src="${msg.audio}" controls class="chat-audio"></audio>`;
+
                 const senderNameHTML = (!isMe && State.activeChatData && (State.activeChatData.type === 'group' || State.activeChatData.type === 'channel')) ? `<div style="font-size:0.75rem; color:var(--accent); font-weight:bold; margin-bottom:3px;">User: ${msg.senderId.substring(0,5)}</div>` : '';
 
-                container.innerHTML += `<div class="msg-row ${isMe ? 'msg-tx' : 'msg-rx'}"><div class="msg-bubble">${senderNameHTML}${textContent}<div class="msg-meta">${timeStr}</div></div></div>`;
+                container.innerHTML += `<div class="msg-row ${isMe ? 'msg-tx' : 'msg-rx'}"><div class="msg-bubble">${senderNameHTML}${contentHTML}<div class="msg-meta">${timeStr}</div></div></div>`;
             });
             setTimeout(() => { container.scrollTop = container.scrollHeight; }, 100);
         });
     },
+
+    // 🔥 TEXT SEND 🔥
     send: async () => {
         const input = document.getElementById('msg-input');
         if(!input) return;
@@ -507,6 +542,10 @@ window.Fluxgram.chat = {
         if(!text || !State.activeChatId) return;
         input.value = ''; UI.autoResize(input);
         
+        // Reset buttons to Mic
+        document.getElementById('btn-send-text').classList.add('hidden');
+        document.getElementById('btn-record-voice').classList.remove('hidden');
+
         try {
             await addDoc(collection(db, `chats/${State.activeChatId}/messages`), { text: text, senderId: State.currentUser.uid, timestamp: serverTimestamp() });
             const snap = await getDoc(doc(db, "chats", State.activeChatId));
@@ -514,6 +553,65 @@ window.Fluxgram.chat = {
             await setDoc(doc(db, "chats", State.activeChatId), { lastMessage: text, lastSender: State.currentUser.uid, updatedAt: serverTimestamp(), unreadCount: unread + 1, typing: [] }, { merge: true });
         } catch(e) { UI.toast(e.message, "error"); }
     },
+
+    // 🔥 IMAGE SEND 🔥
+    sendImage: async (e) => {
+        const file = e.target.files[0];
+        if(!file) return;
+        UI.loader(true);
+        try {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onloadend = async () => {
+                const compressedImg = await Utils.compressToBase64(reader.result, 600, 0.7); // 600px, 70% quality for chats
+                await addDoc(collection(db, `chats/${State.activeChatId}/messages`), { image: compressedImg, senderId: State.currentUser.uid, timestamp: serverTimestamp() });
+                await setDoc(doc(db, "chats", State.activeChatId), { lastMessage: '📸 Image', lastSender: State.currentUser.uid, updatedAt: serverTimestamp() }, { merge: true });
+                UI.loader(false);
+            };
+        } catch(err) { UI.toast("Image send failed", "error"); UI.loader(false); }
+    },
+
+    // 🔥 VOICE RECORDING 🔥
+    startVoice: async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            voiceRecorder = new MediaRecorder(stream);
+            voiceChunks = [];
+            voiceRecorder.ondataavailable = e => voiceChunks.push(e.data);
+            voiceRecorder.onstop = async () => {
+                const audioBlob = new Blob(voiceChunks, { type: 'audio/webm' });
+                const reader = new FileReader();
+                reader.readAsDataURL(audioBlob);
+                reader.onloadend = async () => {
+                    const base64Audio = reader.result;
+                    await addDoc(collection(db, `chats/${State.activeChatId}/messages`), { audio: base64Audio, senderId: State.currentUser.uid, timestamp: serverTimestamp() });
+                    await setDoc(doc(db, "chats", State.activeChatId), { lastMessage: '🎤 Voice Message', lastSender: State.currentUser.uid, updatedAt: serverTimestamp() }, { merge: true });
+                };
+            };
+            voiceRecorder.start();
+            document.getElementById('btn-record-voice').classList.add('recording');
+        } catch (err) { UI.toast("Microphone access denied!", "error"); }
+    },
+    stopVoice: () => {
+        if(voiceRecorder && voiceRecorder.state !== "inactive") {
+            voiceRecorder.stop();
+            document.getElementById('btn-record-voice').classList.remove('recording');
+            UI.toast("Voice sent!");
+        }
+    },
+
+    // 🔥 EMOJI PANEL 🔥
+    toggleEmoji: () => {
+        document.getElementById('emoji-panel').classList.toggle('hidden');
+    },
+    addEmoji: (emoji) => {
+        const input = document.getElementById('msg-input');
+        input.value += emoji;
+        document.getElementById('btn-send-text').classList.remove('hidden');
+        document.getElementById('btn-record-voice').classList.add('hidden');
+        document.getElementById('emoji-panel').classList.add('hidden'); // auto hide after pick
+    },
+
     openByUsername: async (username) => {
         UI.loader(true);
         const key = username.toLowerCase();
