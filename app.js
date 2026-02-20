@@ -1,11 +1,11 @@
 // ============================================================================
-// app.js - Fluxgram Engine (Missing Import Fixed - 100% Working Upload)
+// app.js - Fluxgram Engine (Direct Upload Edition - Fixes Browser Memory Crash)
 // ============================================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateEmail, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, getDocs, collection, addDoc, updateDoc, deleteDoc, onSnapshot, query, where, orderBy, serverTimestamp, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-// FIX: Added 'uploadString' here 👇
-import { getStorage, ref, uploadBytes, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+// Using ultra-light uploadBytes to prevent mobile browser memory crash
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCsbZ1fqDivv8OyUiTcaEMcpZlJlM1TI6Y",
@@ -39,7 +39,7 @@ const getMillis = (ts) => {
     return 0;
 };
 
-// --- UTILS & AUTO IMAGE COMPRESSOR ---
+// --- UTILS & RENDERERS ---
 window.Fluxgram.utils = {
     isUsernameUnique: async (username, currentUsername = null) => {
         const u = username.toLowerCase().replace('@', '');
@@ -53,40 +53,6 @@ window.Fluxgram.utils = {
     renderAvatarHTML: (photoURL, fallbackName, sizeClass = '') => {
         if(photoURL) return `<img src="${photoURL}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;" class="${sizeClass}">`;
         return `<span class="${sizeClass}">${(fallbackName||'U').charAt(0).toUpperCase()}</span>`;
-    },
-    
-    compressImage: (dataUrl, maxWidth = 500, maxHeight = 500, quality = 0.8) => {
-        return new Promise((resolve) => {
-            const img = new Image();
-            img.src = dataUrl;
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                let width = img.width;
-                let height = img.height;
-                if (width > height) {
-                    if (width > maxWidth) { height = Math.round((height * maxWidth) / width); width = maxWidth; }
-                } else {
-                    if (height > maxHeight) { width = Math.round((width * maxHeight) / height); height = maxHeight; }
-                }
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, width, height);
-                resolve(canvas.toDataURL('image/jpeg', quality));
-            };
-            img.onerror = () => resolve(dataUrl); 
-        });
-    },
-
-    uploadImage: async (base64String, path) => {
-        try {
-            const storageRef = ref(storage, `${path}/${Date.now()}_avatar.jpg`);
-            const snapshot = await uploadString(storageRef, base64String, 'data_url');
-            return await getDownloadURL(snapshot.ref);
-        } catch (error) {
-            console.error("Storage Upload Error:", error);
-            throw new Error("Upload failed: " + error.message);
-        }
     }
 };
 const Utils = window.Fluxgram.utils;
@@ -214,7 +180,7 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
-// --- PROFILE & SETTINGS MANAGER ---
+// --- PROFILE & SETTINGS MANAGER (DIRECT UPLOAD) ---
 window.Fluxgram.profile = {
     previewImage: (event, imgId, textId) => {
         const file = event.target.files[0];
@@ -251,7 +217,7 @@ window.Fluxgram.profile = {
         const n = document.getElementById('edit-user-name').value.trim();
         let u = document.getElementById('edit-user-username').value.trim().replace('@', '');
         const b = document.getElementById('edit-user-bio').value.trim();
-        const previewImg = document.getElementById('user-avatar-preview');
+        const fileInput = document.getElementById('user-avatar-input');
         
         if(!u || u.length < 6) return UI.toast("Username must be at least 6 chars", "error");
         
@@ -261,9 +227,12 @@ window.Fluxgram.profile = {
             
             let finalPhotoURL = State.userData.photoURL !== undefined ? State.userData.photoURL : null;
             
-            if(previewImg && !previewImg.classList.contains('hidden') && previewImg.src.startsWith('data:')) {
-                const compressedBase64 = await Utils.compressImage(previewImg.src, 500, 500, 0.8);
-                finalPhotoURL = await Utils.uploadImage(compressedBase64, 'avatars/users');
+            // Direct Upload without Canvas Compression
+            if(fileInput && fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                const storageRef = ref(storage, `avatars/users/${Date.now()}_${file.name}`);
+                const snapshot = await uploadBytes(storageRef, file);
+                finalPhotoURL = await getDownloadURL(snapshot.ref);
             }
 
             await setDoc(doc(db, "users", State.currentUser.uid), { name: n, username: u, searchKey: u.toLowerCase(), bio: b, photoURL: finalPhotoURL }, { merge: true });
@@ -303,7 +272,7 @@ window.Fluxgram.profile = {
         const n = document.getElementById('edit-chat-name').value.trim();
         let u = document.getElementById('edit-chat-username').value.trim().replace('@', '');
         const desc = document.getElementById('edit-chat-desc').value.trim();
-        const previewImg = document.getElementById('chat-avatar-preview');
+        const fileInput = document.getElementById('chat-avatar-input');
 
         if(!n) return UI.toast("Name is required", "error");
         if(u && u.length < 6) return UI.toast("Username must be at least 6 chars", "error");
@@ -314,9 +283,12 @@ window.Fluxgram.profile = {
             
             let finalPhotoURL = State.activeChatData.photoURL !== undefined ? State.activeChatData.photoURL : null;
             
-            if(previewImg && !previewImg.classList.contains('hidden') && previewImg.src.startsWith('data:')) {
-                const compressedBase64 = await Utils.compressImage(previewImg.src, 500, 500, 0.8);
-                finalPhotoURL = await Utils.uploadImage(compressedBase64, 'avatars/chats');
+            // Direct Upload without Canvas Compression
+            if(fileInput && fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                const storageRef = ref(storage, `avatars/chats/${Date.now()}_${file.name}`);
+                const snapshot = await uploadBytes(storageRef, file);
+                finalPhotoURL = await getDownloadURL(snapshot.ref);
             }
 
             await updateDoc(doc(db, "chats", State.activeChatId), { name: n, username: u || null, searchKey: u ? u.toLowerCase() : null, desc: desc, photoURL: finalPhotoURL });
@@ -372,7 +344,7 @@ window.Fluxgram.dash = {
         const name = document.getElementById('create-name').value.trim();
         const desc = document.getElementById('create-desc').value.trim();
         let username = document.getElementById('create-username').value.trim().replace('@', '');
-        const previewImg = document.getElementById('create-avatar-preview');
+        const fileInput = document.getElementById('create-avatar-input');
         
         if(!name) return UI.toast("Name is required", "error");
         if(username && username.length < 6) return UI.toast("Username must be at least 6 chars", "error");
@@ -382,9 +354,11 @@ window.Fluxgram.dash = {
             if(username && !(await Utils.isUsernameUnique(username))) throw new Error("This @username is already taken!");
             
             let photoURL = null;
-            if(previewImg && !previewImg.classList.contains('hidden') && previewImg.src.startsWith('data:')) {
-                const compressedBase64 = await Utils.compressImage(previewImg.src, 500, 500, 0.8);
-                photoURL = await Utils.uploadImage(compressedBase64, 'avatars/chats');
+            if(fileInput && fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                const storageRef = ref(storage, `avatars/chats/${Date.now()}_${file.name}`);
+                const snapshot = await uploadBytes(storageRef, file);
+                photoURL = await getDownloadURL(snapshot.ref);
             }
 
             const newRef = await addDoc(collection(db, "chats"), {
