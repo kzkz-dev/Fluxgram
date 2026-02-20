@@ -1,9 +1,8 @@
 // ============================================================================
-// app.js - Fluxgram Engine (Email Verification Link Edition)
+// app.js - Fluxgram Engine (Base64 Images + Instant Email Update Edition)
 // ============================================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-// FIX: Added 'verifyBeforeUpdateEmail' for sending links
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, verifyBeforeUpdateEmail } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateEmail } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, getDocs, collection, addDoc, updateDoc, deleteDoc, onSnapshot, query, where, orderBy, serverTimestamp, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -251,28 +250,29 @@ window.Fluxgram.profile = {
         } catch(e) { UI.toast(e.message, "error"); } finally { UI.loader(false); }
     },
 
-    // 🔥 NEW: VERIFICATION LINK SYSTEM 🔥
+    // 🔥 INSTANT EMAIL UPDATE 🔥
     changeEmail: async () => {
         const newEmail = document.getElementById('email-change-new').value.trim();
         if(!newEmail) return UI.toast("Enter a new email address", "error");
         
         UI.loader(true);
         try {
-            // Sends a verification link to the NEW email address
-            await verifyBeforeUpdateEmail(auth.currentUser, newEmail);
+            await updateEmail(auth.currentUser, newEmail);
+            await setDoc(doc(db, "users", State.currentUser.uid), { email: newEmail }, { merge: true });
             
             document.getElementById('email-change-modal').classList.add('hidden'); 
-            UI.toast("Verification link sent! Check your new email inbox.", "success");
+            document.getElementById('display-email').innerText = newEmail; 
+            UI.toast("Email updated instantly!", "success");
             
             document.getElementById('email-change-new').value = '';
 
         } catch(e) { 
-            console.error("Email Link Error:", e);
+            console.error("Email Update Error:", e);
             let errorMsg = e.message;
             if (e.code === 'auth/requires-recent-login') {
-                errorMsg = "Security alert: Please log out and log in again to do this.";
+                errorMsg = "Security Alert: Please Log Out and Log In again to change your email!";
             } else if (e.code === 'auth/email-already-in-use') {
-                errorMsg = "This email is already registered!";
+                errorMsg = "This email is already registered to another account!";
             }
             UI.toast(errorMsg, "error"); 
         } finally { 
