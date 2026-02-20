@@ -1,127 +1,239 @@
 // ============================================================================
-// app.js - HD Calling, History & Unsend Engine
+// app.js - Fluxgram Ultra Engine (HD Calls, Delete Msg, Call Log & Fixes)
 // ============================================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateEmail, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, getDocs, collection, addDoc, updateDoc, deleteDoc, onSnapshot, query, where, orderBy, serverTimestamp, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-const firebaseConfig = { apiKey: "AIzaSyCsbZ1fqDivv8OyUiTcaEMcpZlJlM1TI6Y", authDomain: "fluxgram-87009.firebaseapp.com", projectId: "fluxgram-87009", storageBucket: "fluxgram-87009.firebasestorage.app", messagingSenderId: "698836385253", appId: "1:698836385253:web:c40e67ee9006cff536830c" };
+const firebaseConfig = {
+    apiKey: "AIzaSyCsbZ1fqDivv8OyUiTcaEMcpZlJlM1TI6Y",
+    authDomain: "fluxgram-87009.firebaseapp.com",
+    projectId: "fluxgram-87009",
+    storageBucket: "fluxgram-87009.firebasestorage.app",
+    messagingSenderId: "698836385253",
+    appId: "1:698836385253:web:c40e67ee9006cff536830c"
+};
+
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
 window.Fluxgram = {
-    state: { currentUser: null, activeChatId: null, selectedMsgId: null, callStartTime: null },
-    ui: {}, auth: {}, dash: {}, chat: {}, call: {}, utils: {}
+    state: { currentUser: null, userData: null, activeChatId: null, activeChatUser: null, callDocId: null, startTime: null },
+    ui: {}, auth: {}, dash: {}, chat: {}, call: {}, utils: {}, profile: {}
 };
 
 const State = window.Fluxgram.state;
 
 // --- UTILS ---
 window.Fluxgram.utils = {
-    renderAvatarHTML: (photoURL, fallbackName) => photoURL ? `<img src="${photoURL}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">` : `<span>${(fallbackName||'U').charAt(0).toUpperCase()}</span>`,
-    formatDuration: (start, end) => {
-        const diff = Math.floor((end - start) / 1000);
-        const m = Math.floor(diff / 60); const s = diff % 60;
-        return m > 0 ? `${m}m ${s}s` : `${s}s`;
+    renderAvatarHTML: (photoURL, fallbackName) => {
+        if(photoURL && photoURL.length > 10) return `<img src="${photoURL}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
+        return `<span>${(fallbackName||'U').charAt(0).toUpperCase()}</span>`;
+    },
+    compressToBase64: (dataUrl, maxWidth = 300) => {
+        return new Promise((resolve) => {
+            const img = new Image(); img.src = dataUrl;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const scale = maxWidth / img.width;
+                canvas.width = maxWidth; canvas.height = img.height * scale;
+                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                resolve(canvas.toDataURL('image/jpeg', 0.6));
+            };
+        });
     }
 };
 
-// --- CHAT LOGIC (DELETE & VOICE FIX) ---
+const Utils = window.Fluxgram.utils;
+
+// --- CHAT & DELETE LOGIC ---
 window.Fluxgram.chat = {
     init: async () => {
-        const urlParams = new URLSearchParams(window.location.search);
-        State.activeChatId = urlParams.get('chatId') || urlParams.get('uid');
+        const uid = new URLSearchParams(window.location.search).get('uid');
+        const chatId = new URLSearchParams(window.location.search).get('chatId');
+        if (uid) {
+            State.activeChatId = auth.currentUser.uid < uid ? `${auth.currentUser.uid}_${uid}` : `${uid}_${auth.currentUser.uid}`;
+            onSnapshot(doc(db, "users", uid), (d) => {
+                if(d.exists()) {
+                    State.activeChatUser = d.data();
+                    document.getElementById('chat-name').innerText = d.data().username;
+                    document.getElementById('chat-avatar').innerHTML = Utils.renderAvatarHTML(d.data().photoURL, d.data().username);
+                }
+            });
+        }
         window.Fluxgram.chat.loadMessages();
-        
-        // Fix for Voice UI
-        document.getElementById('msg-input').addEventListener('input', (e) => {
-            const hasText = e.target.value.trim().length > 0;
-            document.getElementById('btn-send-text').classList.toggle('hidden', !hasText);
-            document.getElementById('btn-record-voice').classList.toggle('hidden', hasText);
-        });
     },
-
     loadMessages: () => {
-        const q = query(collection(db, `chats/${State.activeChatId}/messages`), orderBy("timestamp", "asc"));
-        onSnapshot(q, (snap) => {
-            const container = document.getElementById('messages-container');
+        const container = document.getElementById('messages-container');
+        onSnapshot(query(collection(db, `chats/${State.activeChatId}/messages`), orderBy("timestamp", "asc")), (snap) => {
             container.innerHTML = '';
             snap.forEach(d => {
-                const msg = d.data();
-                const isMe = msg.senderId === State.currentUser.uid;
-                const div = document.createElement('div');
-                div.className = `msg-row ${isMe ? 'msg-tx' : 'msg-rx'}`;
-                div.innerHTML = `<div class="msg-bubble" oncontextmenu="Fluxgram.chat.showMenu(event, '${d.id}', ${isMe})">${msg.text || 'Media'}</div>`;
-                container.appendChild(div);
+                const m = d.data();
+                const isMe = m.senderId === auth.currentUser.uid;
+                let content = m.text || '';
+                if(m.image) content = `<img src="${m.image}" class="chat-img">`;
+                if(m.audio) content = `<audio src="${m.audio}" controls class="chat-audio"></audio>`;
+                if(m.type === 'call') content = `<div class="call-log ${m.status === 'missed' ? 'missed' : 'success'}"><i class="fas fa-phone"></i> ${m.text}</div>`;
+
+                container.innerHTML += `
+                    <div class="msg-row ${isMe ? 'msg-tx' : 'msg-rx'}">
+                        <div class="msg-bubble" onclick="Fluxgram.chat.showDeleteMenu('${d.id}', '${m.senderId}')">
+                            ${content}
+                        </div>
+                    </div>
+                `;
             });
             container.scrollTop = container.scrollHeight;
         });
     },
-
-    showMenu: (e, msgId, isMe) => {
-        e.preventDefault();
-        State.selectedMsgId = msgId;
-        const menu = document.getElementById('msg-context-menu');
-        menu.style.top = `${e.clientY}px`; menu.style.left = `${e.clientX}px`;
-        menu.classList.remove('hidden');
-        document.getElementById('btn-delete-everyone').classList.toggle('hidden', !isMe);
-        document.addEventListener('click', () => menu.classList.add('hidden'), { once: true });
+    send: async () => {
+        const txt = document.getElementById('msg-input').value.trim();
+        if(!txt) return;
+        document.getElementById('msg-input').value = '';
+        await addDoc(collection(db, `chats/${State.activeChatId}/messages`), { text: txt, senderId: auth.currentUser.uid, timestamp: serverTimestamp() });
+        await setDoc(doc(db, "chats", State.activeChatId), { updatedAt: serverTimestamp(), lastMessage: txt }, { merge: true });
     },
-
-    deleteForMe: async () => {
-        // Local state/logic would handle hiding it for the user
-        Fluxgram.ui.toast("Deleted for you");
+    sendImage: async (e) => {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = async () => {
+            const base64 = await Utils.compressToBase64(reader.result);
+            await addDoc(collection(db, `chats/${State.activeChatId}/messages`), { image: base64, senderId: auth.currentUser.uid, timestamp: serverTimestamp() });
+        };
     },
-
-    deleteForEveryone: async () => {
-        if(confirm("Unsend this message?")) {
-            await deleteDoc(doc(db, `chats/${State.activeChatId}/messages`, State.selectedMsgId));
-            Fluxgram.ui.toast("Message unsent");
+    startVoice: async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const recorder = new MediaRecorder(stream);
+            const chunks = [];
+            recorder.ondataavailable = e => chunks.push(e.data);
+            recorder.onstop = async () => {
+                const blob = new Blob(chunks, { type: 'audio/webm' });
+                const reader = new FileReader(); reader.readAsDataURL(blob);
+                reader.onload = async () => {
+                    await addDoc(collection(db, `chats/${State.activeChatId}/messages`), { audio: reader.result, senderId: auth.currentUser.uid, timestamp: serverTimestamp() });
+                };
+            };
+            window._rec = recorder; recorder.start();
+            document.getElementById('btn-record-voice').classList.add('recording');
+        } catch(e) { alert("Mic Access Denied. Check browser settings."); }
+    },
+    stopVoice: () => {
+        if(window._rec) { window._rec.stop(); document.getElementById('btn-record-voice').classList.remove('recording'); }
+    },
+    showDeleteMenu: async (msgId, senderId) => {
+        const isMe = senderId === auth.currentUser.uid;
+        const choice = confirm(isMe ? "Delete for everyone?" : "Delete for me?");
+        if(choice) {
+            await deleteDoc(doc(db, `chats/${State.activeChatId}/messages`, msgId));
         }
     }
 };
 
 // --- HD CALLING SYSTEM ---
 let pc, localStream;
-const servers = { iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }] };
+const servers = { 
+    iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }],
+    iceCandidatePoolSize: 10
+};
 
 window.Fluxgram.call = {
     startCall: async (type) => {
-        const callScreen = document.getElementById('call-screen');
-        callScreen.classList.remove('hidden');
-        document.getElementById('callStatus').innerText = "Ringing...";
-        
+        const callDoc = doc(collection(db, "calls"));
+        State.callDocId = callDoc.id;
+        document.getElementById('call-screen').classList.remove('hidden');
+        document.getElementById('callName').innerText = State.activeChatUser.username;
+
         try {
-            // HD Quality Constraints
-            const constraints = { audio: { echoCancellation: true, noiseSuppression: true }, video: type === 'video' ? { width: 1280, height: 720 } : false };
-            localStream = await navigator.mediaDevices.getUserMedia(constraints);
-            if(type === 'video') {
-                const lv = document.getElementById('localVideo'); lv.srcObject = localStream; lv.classList.remove('hidden');
-            }
-            State.callStartTime = Date.now();
-            // WebRTC logic (shortened for space)
-        } catch (e) {
-            alert("Microphone/Camera Access Denied! Please check browser settings.");
-            callScreen.classList.add('hidden');
-        }
+            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            document.getElementById('localVideo').srcObject = localStream;
+            
+            // Initial state: hide video if audio call
+            localStream.getVideoTracks()[0].enabled = (type === 'video');
+
+            pc = new RTCPeerConnection(servers);
+            localStream.getTracks().forEach(tr => pc.addTrack(tr, localStream));
+
+            pc.ontrack = e => document.getElementById('remoteVideo').srcObject = e.streams[0];
+            
+            const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
+            await pc.setLocalDescription(offer);
+
+            await setDoc(callDoc, { 
+                offer: { sdp: offer.sdp, type: offer.type },
+                callerId: auth.currentUser.uid, receiverId: State.activeChatUser.uid, 
+                status: 'ringing', type: type, timestamp: serverTimestamp() 
+            });
+
+            onSnapshot(callDoc, (s) => {
+                const data = s.data();
+                if(!pc.currentRemoteDescription && data?.answer) pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+                if(data?.status === 'ended') window.Fluxgram.call.cleanup();
+            });
+            State.startTime = Date.now();
+        } catch(e) { window.Fluxgram.call.cleanup(); }
     },
-
-    endCall: async (reason = "Call Ended") => {
-        const duration = window.Fluxgram.utils.formatDuration(State.callStartTime, Date.now());
-        const historyText = reason === "Call Ended" ? `Voice Call (${duration})` : reason;
-        
-        await addDoc(collection(db, `chats/${State.activeChatId}/messages`), {
-            text: `📞 ${historyText}`,
-            senderId: State.currentUser.uid,
-            timestamp: serverTimestamp(),
-            type: 'call_log'
+    listenForCalls: () => {
+        onSnapshot(query(collection(db, "calls"), where("receiverId", "==", auth.currentUser.uid), where("status", "==", "ringing")), (snap) => {
+            snap.docChanges().forEach(async c => {
+                if(c.type === 'added') {
+                    State.callDocId = c.doc.id;
+                    const data = c.doc.data();
+                    document.getElementById('call-screen').classList.remove('hidden');
+                    document.getElementById('call-incoming-btns').classList.remove('hidden');
+                    document.getElementById('callName').innerText = "Incoming " + data.type;
+                }
+            });
         });
+    },
+    acceptCall: async () => {
+        document.getElementById('call-incoming-btns').classList.add('hidden');
+        const callRef = doc(db, "calls", State.callDocId);
+        const callData = (await getDoc(callRef)).data();
 
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        document.getElementById('localVideo').srcObject = localStream;
+        pc = new RTCPeerConnection(servers);
+        localStream.getTracks().forEach(tr => pc.addTrack(tr, localStream));
+        pc.ontrack = e => document.getElementById('remoteVideo').srcObject = e.streams[0];
+
+        await pc.setRemoteDescription(new RTCSessionDescription(callData.offer));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        await updateDoc(callRef, { answer: { sdp: answer.sdp, type: answer.type }, status: 'connected' });
+        State.startTime = Date.now();
+    },
+    endCall: async () => {
+        let duration = "No Answer";
+        if(State.startTime) {
+            const sec = Math.floor((Date.now() - State.startTime)/1000);
+            duration = `${Math.floor(sec/60)}m ${sec%60}s`;
+        }
+        await addDoc(collection(db, `chats/${State.activeChatId}/messages`), { 
+            type: 'call', text: duration, status: State.startTime ? 'success' : 'missed', senderId: auth.currentUser.uid, timestamp: serverTimestamp() 
+        });
+        if(State.callDocId) await updateDoc(doc(db, "calls", State.callDocId), { status: 'ended' });
+        window.Fluxgram.call.cleanup();
+    },
+    cleanup: () => {
         if(localStream) localStream.getTracks().forEach(t => t.stop());
+        if(pc) pc.close();
         document.getElementById('call-screen').classList.add('hidden');
+        State.callDocId = null; State.startTime = null;
+    },
+    toggleVideo: () => {
+        const track = localStream.getVideoTracks()[0];
+        track.enabled = !track.enabled;
+        document.getElementById('call-video-toggle').innerHTML = track.enabled ? '<i class="fas fa-video"></i>' : '<i class="fas fa-video-slash"></i>';
     }
 };
 
-// Start logic
-onAuthStateChanged(auth, u => { if(u) { State.currentUser = u; if(window.location.pathname.includes('chat')) Fluxgram.chat.init(); } });
+// --- AUTH PRESENCE ---
+onAuthStateChanged(auth, u => {
+    if(u) {
+        if(window.location.pathname.includes('chat')) window.Fluxgram.chat.init();
+        window.Fluxgram.call.listenForCalls();
+    }
+});
