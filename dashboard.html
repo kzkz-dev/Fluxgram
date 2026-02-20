@@ -24,13 +24,12 @@
         <div class="search-bar">
             <div class="search-input-wrap">
                 <i class="fas fa-search" style="color:var(--text-muted)"></i>
-                <input type="text" id="search-input" placeholder="Search users by username..." oninput="Fluxgram.dash.search()">
+                <input type="text" id="search-input" placeholder="Search @username or email..." oninput="Fluxgram.dash.search()">
             </div>
         </div>
 
         <div class="scroll-area">
             <div id="search-results" class="hidden" style="border-bottom: 2px solid var(--divider);"></div>
-            
             <div id="chat-list">
                 <div style="padding:20px; text-align:center;"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
             </div>
@@ -47,8 +46,9 @@
             </div>
             <input type="hidden" id="create-type" value="group">
             
-            <input type="text" id="create-name" style="width:100%; padding:15px; border-radius:8px; background:var(--bg-base); color:white; border:1px solid var(--divider); margin-bottom:15px; outline:none; font-size:1rem;" placeholder="Name (e.g. Flux Devs)">
-            <textarea id="create-desc" rows="2" style="width:100%; padding:15px; border-radius:8px; background:var(--bg-base); color:white; border:1px solid var(--divider); margin-bottom:20px; outline:none; resize:none; font-size:0.95rem;" placeholder="Description (Optional)"></textarea>
+            <input type="text" id="create-name" class="auth-input" style="padding:12px; margin-bottom:10px;" placeholder="Name (e.g. Flux Devs)">
+            <input type="text" id="create-username" class="auth-input" style="padding:12px; margin-bottom:10px;" placeholder="Public @username (Min 6 chars)">
+            <textarea id="create-desc" class="auth-input" rows="2" style="padding:12px; margin-bottom:20px; resize:none;" placeholder="Description (Optional)"></textarea>
             
             <div style="display:flex; gap:15px;">
                 <button onclick="document.getElementById('create-modal').classList.add('hidden')" style="flex:1; padding:12px; background:transparent; color:var(--text-muted); border:1px solid var(--divider); border-radius:8px; cursor:pointer;">Cancel</button>
