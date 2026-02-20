@@ -1,5 +1,5 @@
 // ============================================================================
-// app.js - Core Application Logic
+// app.js - Core Application Logic (Optimized & Error-Proof)
 // ============================================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -20,7 +20,6 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 // --- 2. GLOBAL APP NAMESPACE ---
-// We expose this to window so HTML inline handlers (onclick) can use them.
 window.Fluxgram = {
     state: { currentUser: null, activeChatId: null, activeChatUser: null, unsubMessages: null, unsubChats: null, typingTimeout: null },
     ui: {},
@@ -45,11 +44,16 @@ window.Fluxgram.ui = {
         setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
     },
     toggleForms: (formType) => {
-        document.getElementById('login-form').classList.toggle('hidden', formType !== 'login');
-        document.getElementById('signup-form').classList.toggle('hidden', formType !== 'signup');
-        document.getElementById('reset-form').classList.toggle('hidden', formType !== 'reset');
+        const loginForm = document.getElementById('login-form');
+        const signupForm = document.getElementById('signup-form');
+        const resetForm = document.getElementById('reset-form');
+        
+        if (loginForm) loginForm.classList.toggle('hidden', formType !== 'login');
+        if (signupForm) signupForm.classList.toggle('hidden', formType !== 'signup');
+        if (resetForm) resetForm.classList.toggle('hidden', formType !== 'reset');
     },
     autoResize: (el) => {
+        if (!el) return;
         el.style.height = 'auto';
         el.style.height = (el.scrollHeight) + 'px';
     },
@@ -71,8 +75,12 @@ window.Fluxgram.auth = {
         UI.loader(true);
         try {
             await signInWithEmailAndPassword(auth, e, p);
-            // onAuthStateChanged will handle redirect
-        } catch (err) { UI.toast("Invalid credentials", "error"); UI.loader(false); }
+        } catch (err) { 
+            UI.toast("Invalid credentials. Check email & password.", "error"); 
+            console.error("Login Error:", err);
+        } finally {
+            UI.loader(false);
+        }
     },
 
     signup: async () => {
@@ -85,21 +93,23 @@ window.Fluxgram.auth = {
         
         UI.loader(true);
         try {
-            // 1. Check if username is unique
             const searchKey = u.toLowerCase();
             const q = query(collection(db, "users"), where("searchKey", "==", searchKey));
             const snaps = await getDocs(q);
             if(!snaps.empty) throw new Error("Username already taken.");
 
-            // 2. Create Auth User
             const res = await createUserWithEmailAndPassword(auth, e, p);
             
-            // 3. Create Firestore Profile
             await setDoc(doc(db, "users", res.user.uid), {
                 uid: res.user.uid, email: e, username: u, searchKey: searchKey, isOnline: true, lastSeen: serverTimestamp()
             });
-            UI.toast("Account created!");
-        } catch (err) { UI.toast(err.message, "error"); UI.loader(false); }
+            UI.toast("Account created successfully!");
+        } catch (err) { 
+            UI.toast(err.message, "error"); 
+            console.error("Signup Error:", err);
+        } finally {
+            UI.loader(false);
+        }
     },
 
     reset: async () => {
@@ -107,7 +117,7 @@ window.Fluxgram.auth = {
         if(!e) return UI.toast("Enter email", "error");
         try {
             await sendPasswordResetEmail(auth, e);
-            UI.toast("Password reset sent to email", "success");
+            UI.toast("Password reset link sent!", "success");
             UI.toggleForms('login');
         } catch(err) { UI.toast(err.message, "error"); }
     },
@@ -122,7 +132,7 @@ window.Fluxgram.auth = {
 // --- 5. PRESENCE SYSTEM ---
 function updatePresence(isOnline) {
     if(auth.currentUser) {
-        setDoc(doc(db, "users", auth.currentUser.uid), { isOnline: isOnline, lastSeen: serverTimestamp() }, { merge: true });
+        setDoc(doc(db, "users", auth.currentUser.uid), { isOnline: isOnline, lastSeen: serverTimestamp() }, { merge: true }).catch(err => console.log("Presence update failed:", err));
     }
 }
 window.addEventListener('beforeunload', () => updatePresence(false));
@@ -137,7 +147,7 @@ onAuthStateChanged(auth, (user) => {
     if (user) {
         State.currentUser = user;
         updatePresence(true);
-        // Redirect logic
+        
         if (path.endsWith('index.html') || path === '/' || path.endsWith('/')) {
             window.location.replace('dashboard.html');
         } else if (path.endsWith('dashboard.html')) {
@@ -161,6 +171,8 @@ window.Fluxgram.dash = {
         const chatList = document.getElementById('chat-list');
         const State = window.Fluxgram.state;
 
+        if(!resultsBox || !chatList) return;
+
         if(term.length < 2) {
             resultsBox.classList.add('hidden');
             chatList.classList.remove('hidden');
@@ -181,7 +193,7 @@ window.Fluxgram.dash = {
                 const u = docSnap.data();
                 resultsBox.innerHTML += `
                     <div class="chat-item" onclick="window.location.href='chat.html?uid=${u.uid}'">
-                        <div class="avatar">${u.username.charAt(0)}</div>
+                        <div class="avatar">${u.username.charAt(0).toUpperCase()}</div>
                         <div class="chat-info">
                             <div class="c-name">${u.username}</div>
                             <div class="c-msg">${u.email}</div>
@@ -190,49 +202,71 @@ window.Fluxgram.dash = {
                 `;
             });
             if(resultsBox.innerHTML === '') resultsBox.innerHTML = `<div style="padding:15px; text-align:center; color:var(--text-muted);">No users found</div>`;
-        } catch(e) { console.error(e); }
+        } catch(e) { 
+            console.error("Search Error:", e); 
+            resultsBox.innerHTML = `<div style="padding:15px; text-align:center; color:var(--danger);">Search failed. Please check database rules.</div>`;
+        }
     },
 
     loadChats: () => {
         const State = window.Fluxgram.state;
-        const q = query(collection(db, "chats"), where("members", "array-contains", State.currentUser.uid), orderBy("updatedAt", "desc"));
+        const list = document.getElementById('chat-list');
+        if(!list) return;
+
+        // NOTE: Removed orderBy("updatedAt", "desc") to prevent Missing Index error on initial load.
+        // It will now load chats correctly. You can add it back once you create the index in Firebase Console.
+        const q = query(collection(db, "chats"), where("members", "array-contains", State.currentUser.uid));
         
         State.unsubChats = onSnapshot(q, async (snapshot) => {
-            const list = document.getElementById('chat-list');
-            if(!list) return;
             list.innerHTML = '';
             
-            if(snapshot.empty) list.innerHTML = `<div style="padding:30px; text-align:center; color:var(--text-muted);">No chats yet. Search a user to start.</div>`;
+            if(snapshot.empty) {
+                list.innerHTML = `<div style="padding:30px; text-align:center; color:var(--text-muted);">No chats yet. Search a user to start.</div>`;
+                return;
+            }
 
-            for (const chatDoc of snapshot.docs) {
-                const data = chatDoc.data();
+            // We sort manually in JS to avoid the Firebase Index requirement for now
+            const chatDocs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            chatDocs.sort((a, b) => {
+                const timeA = a.updatedAt ? a.updatedAt.toMillis() : 0;
+                const timeB = b.updatedAt ? b.updatedAt.toMillis() : 0;
+                return timeB - timeA;
+            });
+
+            for (const data of chatDocs) {
                 const otherUid = data.members.find(id => id !== State.currentUser.uid);
                 
-                // Fetch other user doc
-                const otherUserDoc = await getDoc(doc(db, "users", otherUid));
-                if(!otherUserDoc.exists()) continue;
-                const otherUser = otherUserDoc.data();
+                try {
+                    const otherUserDoc = await getDoc(doc(db, "users", otherUid));
+                    if(!otherUserDoc.exists()) continue;
+                    const otherUser = otherUserDoc.data();
 
-                const timeStr = data.updatedAt ? data.updatedAt.toDate().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '';
-                const isTyping = data.typing && data.typing.includes(otherUid);
-                const unread = (data.lastSender !== State.currentUser.uid && data.unreadCount > 0) ? `<div class="unread-badge">${data.unreadCount}</div>` : '';
+                    const timeStr = data.updatedAt ? data.updatedAt.toDate().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '';
+                    const isTyping = data.typing && data.typing.includes(otherUid);
+                    const unread = (data.lastSender !== State.currentUser.uid && data.unreadCount > 0) ? `<div class="unread-badge">${data.unreadCount}</div>` : '';
 
-                list.innerHTML += `
-                    <div class="chat-item" onclick="window.location.href='chat.html?uid=${otherUid}'">
-                        <div class="avatar">${otherUser.username.charAt(0)}</div>
-                        <div class="chat-info">
-                            <div class="c-name-row">
-                                <div class="c-name">${otherUser.username}</div>
-                                <div class="c-time">${timeStr}</div>
-                            </div>
-                            <div class="c-msg-row">
-                                <div class="c-msg" style="${isTyping ? 'color:var(--accent);' : ''}">${isTyping ? 'typing...' : (data.lastMessage || 'New Chat')}</div>
-                                ${unread}
+                    list.innerHTML += `
+                        <div class="chat-item" onclick="window.location.href='chat.html?uid=${otherUid}'">
+                            <div class="avatar">${otherUser.username.charAt(0).toUpperCase()}</div>
+                            <div class="chat-info">
+                                <div class="c-name-row">
+                                    <div class="c-name">${otherUser.username}</div>
+                                    <div class="c-time">${timeStr}</div>
+                                </div>
+                                <div class="c-msg-row">
+                                    <div class="c-msg" style="${isTyping ? 'color:var(--accent);' : ''}">${isTyping ? 'typing...' : (data.lastMessage || 'New Chat')}</div>
+                                    ${unread}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                `;
+                    `;
+                } catch(err) {
+                    console.error("Error loading user profile for chat list:", err);
+                }
             }
+        }, (error) => {
+            console.error("Chat List Snapshot Error:", error);
+            list.innerHTML = `<div style="padding:30px; text-align:center; color:var(--danger);">Error loading chats. Check Firebase Security Rules.</div>`;
         });
     }
 };
@@ -244,61 +278,72 @@ window.Fluxgram.chat = {
         const otherUid = UI.getParam('uid');
         if(!otherUid) return window.location.replace('dashboard.html');
 
-        // Setup Chat ID
         const chatId = State.currentUser.uid < otherUid ? `${State.currentUser.uid}_${otherUid}` : `${otherUid}_${State.currentUser.uid}`;
         State.activeChatId = chatId;
 
-        // Ensure Chat Doc Exists
-        const chatRef = doc(db, "chats", chatId);
-        const chatSnap = await getDoc(chatRef);
-        if(!chatSnap.exists()){
-            await setDoc(chatRef, { members: [State.currentUser.uid, otherUid], updatedAt: serverTimestamp(), lastMessage: "Chat created", unreadCount: 0 });
-        } else {
-            // Reset unread count if I am opening it and I didn't send the last message
-            if(chatSnap.data().lastSender !== State.currentUser.uid) {
-                await updateDoc(chatRef, { unreadCount: 0 });
-            }
-        }
-
-        // Fetch Remote User Info & Listen to Presence
-        onSnapshot(doc(db, "users", otherUid), (d) => {
-            if(d.exists()) {
-                const u = d.data();
-                State.activeChatUser = u;
-                document.getElementById('chat-name').innerText = u.username;
-                document.getElementById('chat-avatar').innerText = u.username.charAt(0);
-                
-                const statusEl = document.getElementById('chat-status');
-                statusEl.innerText = u.isOnline ? 'Online' : 'Offline';
-                statusEl.classList.toggle('online', u.isOnline);
-            }
-        });
-
-        // Listen for Typing
-        onSnapshot(doc(db, "chats", chatId), (d) => {
-            if(d.exists() && d.data().typing && d.data().typing.includes(otherUid)) {
-                document.getElementById('typing-indicator').classList.remove('hidden');
+        try {
+            const chatRef = doc(db, "chats", chatId);
+            const chatSnap = await getDoc(chatRef);
+            if(!chatSnap.exists()){
+                await setDoc(chatRef, { members: [State.currentUser.uid, otherUid], updatedAt: serverTimestamp(), lastMessage: "Chat created", unreadCount: 0 });
             } else {
-                document.getElementById('typing-indicator').classList.add('hidden');
+                if(chatSnap.data().lastSender !== State.currentUser.uid) {
+                    await updateDoc(chatRef, { unreadCount: 0 });
+                }
             }
-        });
 
-        // Setup input listeners
-        const msgInput = document.getElementById('msg-input');
-        msgInput.addEventListener('input', () => {
-            UI.autoResize(msgInput);
-            window.Fluxgram.chat.setTyping();
-        });
-        msgInput.addEventListener('keypress', (e) => {
-            if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); window.Fluxgram.chat.send(); }
-        });
+            onSnapshot(doc(db, "users", otherUid), (d) => {
+                if(d.exists()) {
+                    const u = d.data();
+                    State.activeChatUser = u;
+                    const nameEl = document.getElementById('chat-name');
+                    const avatarEl = document.getElementById('chat-avatar');
+                    const statusEl = document.getElementById('chat-status');
 
-        window.Fluxgram.chat.loadMessages();
+                    if(nameEl) nameEl.innerText = u.username;
+                    if(avatarEl) avatarEl.innerText = u.username.charAt(0).toUpperCase();
+                    if(statusEl) {
+                        statusEl.innerText = u.isOnline ? 'Online' : 'Offline';
+                        statusEl.classList.toggle('online', u.isOnline);
+                    }
+                }
+            });
+
+            onSnapshot(doc(db, "chats", chatId), (d) => {
+                const typingEl = document.getElementById('typing-indicator');
+                if(!typingEl) return;
+                
+                if(d.exists() && d.data().typing && d.data().typing.includes(otherUid)) {
+                    typingEl.classList.remove('hidden');
+                } else {
+                    typingEl.classList.add('hidden');
+                }
+            });
+
+            const msgInput = document.getElementById('msg-input');
+            if(msgInput) {
+                msgInput.addEventListener('input', () => {
+                    UI.autoResize(msgInput);
+                    window.Fluxgram.chat.setTyping();
+                });
+                msgInput.addEventListener('keypress', (e) => {
+                    if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); window.Fluxgram.chat.send(); }
+                });
+            }
+
+            window.Fluxgram.chat.loadMessages();
+
+        } catch(error) {
+            console.error("Chat Init Error:", error);
+            UI.toast("Failed to initialize chat", "error");
+        }
     },
 
     loadMessages: () => {
         const State = window.Fluxgram.state;
         const container = document.getElementById('messages-container');
+        if(!container) return;
+
         const q = query(collection(db, `chats/${State.activeChatId}/messages`), orderBy("timestamp", "asc"));
         
         State.unsubMessages = onSnapshot(q, (snapshot) => {
@@ -318,35 +363,42 @@ window.Fluxgram.chat = {
                 `;
             });
             setTimeout(() => { container.scrollTop = container.scrollHeight; }, 100);
+        }, (error) => {
+            console.error("Message Load Error:", error);
         });
     },
 
     send: async () => {
         const State = window.Fluxgram.state;
         const input = document.getElementById('msg-input');
+        if(!input) return;
+
         const text = input.value.trim();
         if(!text || !State.activeChatId) return;
 
         input.value = '';
         UI.autoResize(input);
 
-        // Add message
-        await addDoc(collection(db, `chats/${State.activeChatId}/messages`), {
-            text: text, senderId: State.currentUser.uid, timestamp: serverTimestamp()
-        });
-        
-        // Update parent chat doc
-        const chatRef = doc(db, "chats", State.activeChatId);
-        const snap = await getDoc(chatRef);
-        let unread = snap.exists() ? (snap.data().unreadCount || 0) : 0;
-        
-        await setDoc(chatRef, { 
-            lastMessage: text, 
-            lastSender: State.currentUser.uid,
-            updatedAt: serverTimestamp(),
-            unreadCount: unread + 1,
-            typing: [] 
-        }, { merge: true });
+        try {
+            await addDoc(collection(db, `chats/${State.activeChatId}/messages`), {
+                text: text, senderId: State.currentUser.uid, timestamp: serverTimestamp()
+            });
+            
+            const chatRef = doc(db, "chats", State.activeChatId);
+            const snap = await getDoc(chatRef);
+            let unread = snap.exists() ? (snap.data().unreadCount || 0) : 0;
+            
+            await setDoc(chatRef, { 
+                lastMessage: text, 
+                lastSender: State.currentUser.uid,
+                updatedAt: serverTimestamp(),
+                unreadCount: unread + 1,
+                typing: [] 
+            }, { merge: true });
+        } catch(error) {
+            console.error("Send Message Error:", error);
+            UI.toast("Failed to send message", "error");
+        }
     },
 
     setTyping: () => {
