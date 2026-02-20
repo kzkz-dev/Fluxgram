@@ -1,10 +1,11 @@
 // ============================================================================
-// app.js - Fluxgram Engine (With Direct Firebase Error Reporting)
+// app.js - Fluxgram Engine (With Auto Image Compressor - Fixes Infinite Loading)
 // ============================================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateEmail, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, getDocs, collection, addDoc, updateDoc, deleteDoc, onSnapshot, query, where, orderBy, serverTimestamp, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+// Changed uploadBytes to uploadString for Base64 Compression
+import { getStorage, ref, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCsbZ1fqDivv8OyUiTcaEMcpZlJlM1TI6Y",
@@ -28,7 +29,7 @@ window.Fluxgram = {
 const State = window.Fluxgram.state;
 
 const formatTime = (ts) => {
-    if (!ts) return '';
+    if (!ts) return 'Just now';
     if (typeof ts.toDate === 'function') return ts.toDate().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
     return '';
 };
@@ -38,6 +39,7 @@ const getMillis = (ts) => {
     return 0;
 };
 
+// --- UTILS & AUTO IMAGE COMPRESSOR ---
 window.Fluxgram.utils = {
     isUsernameUnique: async (username, currentUsername = null) => {
         const u = username.toLowerCase().replace('@', '');
@@ -52,18 +54,46 @@ window.Fluxgram.utils = {
         if(photoURL) return `<img src="${photoURL}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;" class="${sizeClass}">`;
         return `<span class="${sizeClass}">${(fallbackName||'U').charAt(0).toUpperCase()}</span>`;
     },
-    uploadImage: async (file, path) => {
+    
+    // NEW: Image Compressor to fix Mobile Infinite Loading
+    compressImage: (dataUrl, maxWidth = 500, maxHeight = 500, quality = 0.8) => {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.src = dataUrl;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+                if (width > height) {
+                    if (width > maxWidth) { height = Math.round((height * maxWidth) / width); width = maxWidth; }
+                } else {
+                    if (height > maxHeight) { width = Math.round((width * maxHeight) / height); height = maxHeight; }
+                }
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+            img.onerror = () => resolve(dataUrl); // fallback if error
+        });
+    },
+
+    uploadImage: async (base64String, path) => {
         try {
-            const storageRef = ref(storage, `${path}/${Date.now()}_${file.name}`);
-            const snapshot = await uploadBytes(storageRef, file);
+            const storageRef = ref(storage, `${path}/${Date.now()}_avatar.jpg`);
+            // Upload Base64 Data
+            const snapshot = await uploadString(storageRef, base64String, 'data_url');
             return await getDownloadURL(snapshot.ref);
         } catch (error) {
-            throw new Error("Storage Error: " + error.message);
+            console.error("Storage Upload Error:", error);
+            throw new Error("Upload failed. Ensure Storage is enabled and Rules are published.");
         }
     }
 };
 const Utils = window.Fluxgram.utils;
 
+// --- UI HELPERS ---
 window.Fluxgram.ui = {
     loader: (show) => { const l = document.getElementById('global-loader'); if(l) l.classList.toggle('hidden', !show); },
     toast: (msg, type = 'success') => {
@@ -119,13 +149,14 @@ window.Fluxgram.ui = {
 };
 const UI = window.Fluxgram.ui;
 
+// --- AUTHENTICATION ---
 window.Fluxgram.auth = {
     login: async () => {
         const e = document.getElementById('login-email').value.trim();
         const p = document.getElementById('login-password').value.trim();
         if(!e || !p) return UI.toast("Enter email and password", "error");
         UI.loader(true);
-        try { await signInWithEmailAndPassword(auth, e, p); } catch (err) { UI.toast(err.message, "error"); UI.loader(false); }
+        try { await signInWithEmailAndPassword(auth, e, p); } catch (err) { UI.toast("Invalid credentials.", "error"); UI.loader(false); }
     },
     signup: async () => {
         let u = document.getElementById('signup-username').value.trim().replace('@', '');
@@ -185,6 +216,7 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
+// --- PROFILE & SETTINGS MANAGER ---
 window.Fluxgram.profile = {
     previewImage: (event, imgId, textId) => {
         const file = event.target.files[0];
@@ -193,11 +225,12 @@ window.Fluxgram.profile = {
             reader.onload = (e) => {
                 document.getElementById(imgId).src = e.target.result;
                 document.getElementById(imgId).classList.remove('hidden');
-                document.getElementById(textId).classList.add('hidden');
+                if(document.getElementById(textId)) document.getElementById(textId).classList.add('hidden');
             };
             reader.readAsDataURL(file);
         }
     },
+    
     openUserEdit: () => {
         if(!State.userData) return;
         document.getElementById('edit-user-name').value = State.userData.name || '';
@@ -215,23 +248,34 @@ window.Fluxgram.profile = {
         }
         document.getElementById('edit-user-modal').classList.remove('hidden');
     },
+
     saveUserEdit: async () => {
         const n = document.getElementById('edit-user-name').value.trim();
         let u = document.getElementById('edit-user-username').value.trim().replace('@', '');
         const b = document.getElementById('edit-user-bio').value.trim();
-        const fileInput = document.getElementById('user-avatar-input');
+        const previewImg = document.getElementById('user-avatar-preview');
         
         if(!u || u.length < 6) return UI.toast("Username must be at least 6 chars", "error");
         
         UI.loader(true);
         try {
             if(!(await Utils.isUsernameUnique(u, State.userData.username))) throw new Error("This @username is already taken!");
+            
             let finalPhotoURL = State.userData.photoURL !== undefined ? State.userData.photoURL : null;
-            if(fileInput && fileInput.files.length > 0) { finalPhotoURL = await Utils.uploadImage(fileInput.files[0], 'avatars/users'); }
+            
+            // Check if a new image was selected (base64 data url)
+            if(previewImg && !previewImg.classList.contains('hidden') && previewImg.src.startsWith('data:')) {
+                // Compress image before uploading
+                const compressedBase64 = await Utils.compressImage(previewImg.src, 500, 500, 0.8);
+                finalPhotoURL = await Utils.uploadImage(compressedBase64, 'avatars/users');
+            }
+
             await setDoc(doc(db, "users", State.currentUser.uid), { name: n, username: u, searchKey: u.toLowerCase(), bio: b, photoURL: finalPhotoURL }, { merge: true });
-            document.getElementById('edit-user-modal').classList.add('hidden'); UI.toast("Profile updated successfully!");
+            document.getElementById('edit-user-modal').classList.add('hidden'); 
+            UI.toast("Profile updated successfully!");
         } catch(e) { UI.toast(e.message, "error"); } finally { UI.loader(false); }
     },
+
     changeEmail: async () => {
         const pass = document.getElementById('email-change-password').value;
         const newEmail = document.getElementById('email-change-new').value.trim();
@@ -243,8 +287,9 @@ window.Fluxgram.profile = {
             await updateEmail(auth.currentUser, newEmail);
             await setDoc(doc(db, "users", State.currentUser.uid), { email: newEmail }, { merge: true });
             document.getElementById('email-change-modal').classList.add('hidden'); document.getElementById('display-email').innerText = newEmail; UI.toast("Email updated successfully!", "success");
-        } catch(e) { UI.toast(e.message, "error"); } finally { UI.loader(false); }
+        } catch(e) { UI.toast("Error: Incorrect password or invalid email.", "error"); } finally { UI.loader(false); }
     },
+
     openChatEdit: () => {
         if(!State.activeChatData || State.activeChatData.admin !== State.currentUser.uid) return;
         const d = State.activeChatData;
@@ -257,23 +302,35 @@ window.Fluxgram.profile = {
         else { preview.classList.add('hidden'); text.classList.remove('hidden'); text.innerText = (d.name || 'G').charAt(0).toUpperCase(); }
         document.getElementById('edit-chat-modal').classList.remove('hidden');
     },
+
     saveChatEdit: async () => {
         const n = document.getElementById('edit-chat-name').value.trim();
         let u = document.getElementById('edit-chat-username').value.trim().replace('@', '');
         const desc = document.getElementById('edit-chat-desc').value.trim();
-        const fileInput = document.getElementById('chat-avatar-input');
+        const previewImg = document.getElementById('chat-avatar-preview');
+
         if(!n) return UI.toast("Name is required", "error");
         if(u && u.length < 6) return UI.toast("Username must be at least 6 chars", "error");
 
         UI.loader(true);
         try {
             if(u && !(await Utils.isUsernameUnique(u, State.activeChatData.username))) throw new Error("This @username is already taken!");
+            
             let finalPhotoURL = State.activeChatData.photoURL !== undefined ? State.activeChatData.photoURL : null;
-            if(fileInput && fileInput.files.length > 0) { finalPhotoURL = await Utils.uploadImage(fileInput.files[0], 'avatars/chats'); }
+            
+            // Compress and Upload new group image
+            if(previewImg && !previewImg.classList.contains('hidden') && previewImg.src.startsWith('data:')) {
+                const compressedBase64 = await Utils.compressImage(previewImg.src, 500, 500, 0.8);
+                finalPhotoURL = await Utils.uploadImage(compressedBase64, 'avatars/chats');
+            }
+
             await updateDoc(doc(db, "chats", State.activeChatId), { name: n, username: u || null, searchKey: u ? u.toLowerCase() : null, desc: desc, photoURL: finalPhotoURL });
-            document.getElementById('edit-chat-modal').classList.add('hidden'); UI.toast("Updated successfully!"); UI.showProfile(); 
+            document.getElementById('edit-chat-modal').classList.add('hidden'); 
+            UI.toast("Updated successfully!"); 
+            UI.showProfile(); 
         } catch(e) { UI.toast(e.message, "error"); } finally { UI.loader(false); }
     },
+
     deleteChat: async () => {
         if(confirm("Are you sure you want to delete this Group/Channel?")) {
             UI.loader(true);
@@ -283,6 +340,7 @@ window.Fluxgram.profile = {
     }
 };
 
+// --- DASHBOARD LOGIC ---
 window.Fluxgram.dash = {
     search: async () => {
         const term = document.getElementById('search-input').value.trim().toLowerCase().replace('@', '');
@@ -319,7 +377,7 @@ window.Fluxgram.dash = {
         const name = document.getElementById('create-name').value.trim();
         const desc = document.getElementById('create-desc').value.trim();
         let username = document.getElementById('create-username').value.trim().replace('@', '');
-        const fileInput = document.getElementById('create-avatar-input');
+        const previewImg = document.getElementById('create-avatar-preview');
         
         if(!name) return UI.toast("Name is required", "error");
         if(username && username.length < 6) return UI.toast("Username must be at least 6 chars", "error");
@@ -327,8 +385,12 @@ window.Fluxgram.dash = {
         UI.loader(true);
         try {
             if(username && !(await Utils.isUsernameUnique(username))) throw new Error("This @username is already taken!");
+            
             let photoURL = null;
-            if(fileInput && fileInput.files.length > 0) photoURL = await Utils.uploadImage(fileInput.files[0], 'avatars/chats');
+            if(previewImg && !previewImg.classList.contains('hidden') && previewImg.src.startsWith('data:')) {
+                const compressedBase64 = await Utils.compressImage(previewImg.src, 500, 500, 0.8);
+                photoURL = await Utils.uploadImage(compressedBase64, 'avatars/chats');
+            }
 
             const newRef = await addDoc(collection(db, "chats"), {
                 type: type, name: name, desc: desc, username: username || null, searchKey: username ? username.toLowerCase() : null, photoURL: photoURL,
@@ -369,11 +431,8 @@ window.Fluxgram.dash = {
                     const otherUser = otherUserDoc.data();
                     const isTyping = data.typing && data.typing.includes(otherUid);
                     list.innerHTML += `<div class="chat-item" onclick="window.location.href='chat.html?uid=${otherUid}'"><div class="avatar">${Utils.renderAvatarHTML(otherUser.photoURL, otherUser.username)}</div><div class="chat-info"><div class="c-name-row"><div class="c-name">${otherUser.username || 'User'}</div><div class="c-time">${timeStr}</div></div><div class="c-msg-row"><div class="c-msg" style="${isTyping ? 'color:var(--accent);' : ''}">${isTyping ? 'typing...' : (data.lastMessage || '')}</div>${unread}</div></div></div>`;
-                } catch(err) { console.error("User Load Error:", err); }
+                } catch(err) {}
             }
-        }, (error) => {
-            // THE EXACT ERROR FINDER:
-            list.innerHTML = `<div style="padding:30px; text-align:center; color:var(--danger); font-weight:bold;">Firebase Error:<br><span style="font-size:0.85rem; font-weight:normal; color:#ffb3b3;">${error.message}</span></div>`;
         });
     }
 };
@@ -434,7 +493,7 @@ window.Fluxgram.chat = {
             }
 
             window.Fluxgram.chat.loadMessages();
-        } catch(error) { UI.toast("Failed to load chat: " + error.message, "error"); }
+        } catch(error) { UI.toast("Failed to load chat", "error"); }
     },
     loadMessages: () => {
         const container = document.getElementById('messages-container');
@@ -506,7 +565,7 @@ window.Fluxgram.chat = {
             if(snaps.empty) { UI.toast("User not found", "error"); UI.loader(false); return; }
             await updateDoc(doc(db, "chats", State.activeChatId), { members: arrayUnion(snaps.docs[0].id) });
             UI.toast("Member added successfully!", "success");
-        } catch(e) { UI.toast(e.message, "error"); }
+        } catch(e) { UI.toast("Failed to add member", "error"); }
         finally { UI.loader(false); }
     }
 };
