@@ -1,5 +1,5 @@
 // ============================================================================
-// app.js - Fluxgram Engine (Fixed Routing Bug for GitHub Pages)
+// app.js - Fluxgram Engine (With Direct Firebase Error Reporting)
 // ============================================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateEmail, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -27,9 +27,8 @@ window.Fluxgram = {
 
 const State = window.Fluxgram.state;
 
-// --- SAFE TIMESTAMP PARSERS ---
 const formatTime = (ts) => {
-    if (!ts) return 'Just now';
+    if (!ts) return '';
     if (typeof ts.toDate === 'function') return ts.toDate().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
     return '';
 };
@@ -39,7 +38,6 @@ const getMillis = (ts) => {
     return 0;
 };
 
-// --- UTILS & RENDERERS ---
 window.Fluxgram.utils = {
     isUsernameUnique: async (username, currentUsername = null) => {
         const u = username.toLowerCase().replace('@', '');
@@ -60,14 +58,12 @@ window.Fluxgram.utils = {
             const snapshot = await uploadBytes(storageRef, file);
             return await getDownloadURL(snapshot.ref);
         } catch (error) {
-            console.error("Storage Upload Error:", error);
-            throw new Error("Image upload failed. Storage Rules might be blocking it.");
+            throw new Error("Storage Error: " + error.message);
         }
     }
 };
 const Utils = window.Fluxgram.utils;
 
-// --- UI HELPERS ---
 window.Fluxgram.ui = {
     loader: (show) => { const l = document.getElementById('global-loader'); if(l) l.classList.toggle('hidden', !show); },
     toast: (msg, type = 'success') => {
@@ -123,14 +119,13 @@ window.Fluxgram.ui = {
 };
 const UI = window.Fluxgram.ui;
 
-// --- AUTHENTICATION ---
 window.Fluxgram.auth = {
     login: async () => {
         const e = document.getElementById('login-email').value.trim();
         const p = document.getElementById('login-password').value.trim();
         if(!e || !p) return UI.toast("Enter email and password", "error");
         UI.loader(true);
-        try { await signInWithEmailAndPassword(auth, e, p); } catch (err) { UI.toast("Invalid credentials.", "error"); UI.loader(false); }
+        try { await signInWithEmailAndPassword(auth, e, p); } catch (err) { UI.toast(err.message, "error"); UI.loader(false); }
     },
     signup: async () => {
         let u = document.getElementById('signup-username').value.trim().replace('@', '');
@@ -138,7 +133,6 @@ window.Fluxgram.auth = {
         const p = document.getElementById('signup-password').value.trim();
         if(!u || !e || p.length < 6) return UI.toast("Fill all fields. Password min 6 chars.", "error");
         if(u.length < 6) return UI.toast("Username must be at least 6 characters.", "error");
-        if(/[^a-zA-Z0-9_]/.test(u)) return UI.toast("Username can only contain letters, numbers, and underscores.", "error");
 
         UI.loader(true);
         try {
@@ -166,7 +160,6 @@ function updatePresence(isOnline) {
 window.addEventListener('beforeunload', () => updatePresence(false));
 document.addEventListener('visibilitychange', () => updatePresence(document.visibilityState === 'visible'));
 
-// 🛑 FIXED ROUTING LOGIC FOR GITHUB PAGES 🛑
 onAuthStateChanged(auth, async (user) => {
     const path = window.location.pathname.toLowerCase();
     UI.loader(false);
@@ -178,27 +171,20 @@ onAuthStateChanged(auth, async (user) => {
         const deepLinkUsername = UI.getParam('link');
         if(deepLinkUsername && !path.includes('chat')) { window.location.replace(`chat.html?link=${deepLinkUsername}`); return; }
 
-        // Using .includes() instead of .endsWith() because GitHub Pages hides .html
         if (path.includes('dashboard')) { 
             window.Fluxgram.dash.loadChats(); 
-        } 
-        else if (path.includes('chat')) { 
+        } else if (path.includes('chat')) { 
             window.Fluxgram.chat.init(); 
             window.Fluxgram.call.listenForCalls(); 
-        } 
-        else { 
-            // If on root or index.html, redirect to dashboard
+        } else { 
             window.location.replace('dashboard.html'); 
         }
     } else {
         State.currentUser = null;
-        if (path.includes('dashboard') || path.includes('chat')) { 
-            window.location.replace('index.html'); 
-        }
+        if (path.includes('dashboard') || path.includes('chat')) { window.location.replace('index.html'); }
     }
 });
 
-// --- PROFILE & SETTINGS MANAGER ---
 window.Fluxgram.profile = {
     previewImage: (event, imgId, textId) => {
         const file = event.target.files[0];
@@ -257,7 +243,7 @@ window.Fluxgram.profile = {
             await updateEmail(auth.currentUser, newEmail);
             await setDoc(doc(db, "users", State.currentUser.uid), { email: newEmail }, { merge: true });
             document.getElementById('email-change-modal').classList.add('hidden'); document.getElementById('display-email').innerText = newEmail; UI.toast("Email updated successfully!", "success");
-        } catch(e) { UI.toast("Error: Incorrect password or invalid email.", "error"); } finally { UI.loader(false); }
+        } catch(e) { UI.toast(e.message, "error"); } finally { UI.loader(false); }
     },
     openChatEdit: () => {
         if(!State.activeChatData || State.activeChatData.admin !== State.currentUser.uid) return;
@@ -292,12 +278,11 @@ window.Fluxgram.profile = {
         if(confirm("Are you sure you want to delete this Group/Channel?")) {
             UI.loader(true);
             try { await deleteDoc(doc(db, "chats", State.activeChatId)); UI.toast("Deleted successfully"); window.location.href = 'dashboard.html'; } 
-            catch(e) { UI.toast("Error deleting: " + e.message, "error"); UI.loader(false); }
+            catch(e) { UI.toast(e.message, "error"); UI.loader(false); }
         }
     }
 };
 
-// --- DASHBOARD LOGIC ---
 window.Fluxgram.dash = {
     search: async () => {
         const term = document.getElementById('search-input').value.trim().toLowerCase().replace('@', '');
@@ -321,7 +306,7 @@ window.Fluxgram.dash = {
                 }
             });
             if(resBox.innerHTML === '') resBox.innerHTML = `<div style="padding:15px; text-align:center; color:var(--text-muted);">No matches found</div>`;
-        } catch(e) { resBox.innerHTML = `<div style="padding:15px; text-align:center; color:var(--danger);">Search Error: ${e.message}</div>`; }
+        } catch(e) {}
     },
     setCreateType: (type) => {
         document.getElementById('create-type').value = type;
@@ -356,50 +341,40 @@ window.Fluxgram.dash = {
         const list = document.getElementById('chat-list');
         if(!list) return;
 
-        try {
-            const q = query(collection(db, "chats"), where("members", "array-contains", State.currentUser.uid));
-            State.unsubChats = onSnapshot(q, async (snapshot) => {
-                try {
-                    list.innerHTML = '';
-                    if(snapshot.empty) { list.innerHTML = `<div style="padding:30px; text-align:center; color:var(--text-muted);">No chats yet.</div>`; return; }
+        const q = query(collection(db, "chats"), where("members", "array-contains", State.currentUser.uid));
+        
+        State.unsubChats = onSnapshot(q, async (snapshot) => {
+            list.innerHTML = '';
+            if(snapshot.empty) { list.innerHTML = `<div style="padding:30px; text-align:center; color:var(--text-muted);">No chats yet.</div>`; return; }
 
-                    const chatDocs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    chatDocs.sort((a, b) => getMillis(b.updatedAt) - getMillis(a.updatedAt));
+            const chatDocs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a, b) => getMillis(b.updatedAt) - getMillis(a.updatedAt));
 
-                    for (const data of chatDocs) {
-                        try {
-                            const timeStr = formatTime(data.updatedAt);
-                            const unread = (data.lastSender !== State.currentUser.uid && data.unreadCount > 0) ? `<div class="unread-badge">${data.unreadCount}</div>` : '';
+            for (const data of chatDocs) {
+                const timeStr = formatTime(data.updatedAt);
+                const unread = (data.lastSender !== State.currentUser.uid && data.unreadCount > 0) ? `<div class="unread-badge">${data.unreadCount}</div>` : '';
 
-                            if (data.type === 'group' || data.type === 'channel') {
-                                const icon = data.type === 'channel' ? 'fa-bullhorn' : 'fa-users';
-                                list.innerHTML += `<div class="chat-item" onclick="window.location.href='chat.html?chatId=${data.id}'"><div class="avatar">${Utils.renderAvatarHTML(data.photoURL, data.name)}</div><div class="chat-info"><div class="c-name-row"><div class="c-name">${data.name} <i class="fas ${icon}" style="font-size:0.8rem; color:var(--text-muted);"></i></div><div class="c-time">${timeStr}</div></div><div class="c-msg-row"><div class="c-msg">${data.lastMessage || ''}</div>${unread}</div></div></div>`;
-                                continue;
-                            }
-
-                            if (!data.members || !Array.isArray(data.members)) continue; // Safety check for corrupted docs
-
-                            const otherUid = data.members.find(id => id !== State.currentUser.uid);
-                            if(!otherUid) continue;
-
-                            const otherUserDoc = await getDoc(doc(db, "users", otherUid));
-                            if(!otherUserDoc.exists()) continue;
-                            
-                            const otherUser = otherUserDoc.data();
-                            const isTyping = data.typing && data.typing.includes(otherUid);
-
-                            list.innerHTML += `<div class="chat-item" onclick="window.location.href='chat.html?uid=${otherUid}'"><div class="avatar">${Utils.renderAvatarHTML(otherUser.photoURL, otherUser.username)}</div><div class="chat-info"><div class="c-name-row"><div class="c-name">${otherUser.username || 'User'}</div><div class="c-time">${timeStr}</div></div><div class="c-msg-row"><div class="c-msg" style="${isTyping ? 'color:var(--accent);' : ''}">${isTyping ? 'typing...' : (data.lastMessage || '')}</div>${unread}</div></div></div>`;
-                        } catch(innerE) { console.error("Error rendering chat block:", innerE); }
-                    }
-                } catch(renderErr) {
-                    list.innerHTML = `<div style="padding:30px; text-align:center; color:var(--danger);">Data Load Error: ${renderErr.message}</div>`;
+                if (data.type === 'group' || data.type === 'channel') {
+                    const icon = data.type === 'channel' ? 'fa-bullhorn' : 'fa-users';
+                    list.innerHTML += `<div class="chat-item" onclick="window.location.href='chat.html?chatId=${data.id}'"><div class="avatar">${Utils.renderAvatarHTML(data.photoURL, data.name)}</div><div class="chat-info"><div class="c-name-row"><div class="c-name">${data.name} <i class="fas ${icon}" style="font-size:0.8rem; color:var(--text-muted);"></i></div><div class="c-time">${timeStr}</div></div><div class="c-msg-row"><div class="c-msg">${data.lastMessage || ''}</div>${unread}</div></div></div>`;
+                    continue;
                 }
-            }, (error) => {
-                list.innerHTML = `<div style="padding:30px; text-align:center; color:var(--danger);">Firebase Permission Error. Check your Rules.</div>`;
-            });
-        } catch (fatalErr) {
-            list.innerHTML = `<div style="padding:30px; text-align:center; color:var(--danger);">System Error: ${fatalErr.message}</div>`;
-        }
+
+                if(!data.members || !Array.isArray(data.members)) continue;
+                const otherUid = data.members.find(id => id !== State.currentUser.uid);
+                if(!otherUid) continue;
+
+                try {
+                    const otherUserDoc = await getDoc(doc(db, "users", otherUid));
+                    if(!otherUserDoc.exists()) continue;
+                    const otherUser = otherUserDoc.data();
+                    const isTyping = data.typing && data.typing.includes(otherUid);
+                    list.innerHTML += `<div class="chat-item" onclick="window.location.href='chat.html?uid=${otherUid}'"><div class="avatar">${Utils.renderAvatarHTML(otherUser.photoURL, otherUser.username)}</div><div class="chat-info"><div class="c-name-row"><div class="c-name">${otherUser.username || 'User'}</div><div class="c-time">${timeStr}</div></div><div class="c-msg-row"><div class="c-msg" style="${isTyping ? 'color:var(--accent);' : ''}">${isTyping ? 'typing...' : (data.lastMessage || '')}</div>${unread}</div></div></div>`;
+                } catch(err) { console.error("User Load Error:", err); }
+            }
+        }, (error) => {
+            // THE EXACT ERROR FINDER:
+            list.innerHTML = `<div style="padding:30px; text-align:center; color:var(--danger); font-weight:bold;">Firebase Error:<br><span style="font-size:0.85rem; font-weight:normal; color:#ffb3b3;">${error.message}</span></div>`;
+        });
     }
 };
 
@@ -477,9 +452,6 @@ window.Fluxgram.chat = {
                 container.innerHTML += `<div class="msg-row ${isMe ? 'msg-tx' : 'msg-rx'}"><div class="msg-bubble">${senderNameHTML}${textContent}<div class="msg-meta">${timeStr}</div></div></div>`;
             });
             setTimeout(() => { container.scrollTop = container.scrollHeight; }, 100);
-        }, (error) => {
-            console.error("Messages Error:", error);
-            container.innerHTML = `<div style="color:var(--danger); text-align:center;">Failed to load messages</div>`;
         });
     },
     send: async () => {
@@ -494,9 +466,7 @@ window.Fluxgram.chat = {
             const snap = await getDoc(doc(db, "chats", State.activeChatId));
             let unread = snap.exists() ? (snap.data().unreadCount || 0) : 0;
             await setDoc(doc(db, "chats", State.activeChatId), { lastMessage: text, lastSender: State.currentUser.uid, updatedAt: serverTimestamp(), unreadCount: unread + 1, typing: [] }, { merge: true });
-        } catch(e) {
-            UI.toast("Failed to send message", "error");
-        }
+        } catch(e) { UI.toast(e.message, "error"); }
     },
     openByUsername: async (username) => {
         UI.loader(true);
@@ -536,12 +506,11 @@ window.Fluxgram.chat = {
             if(snaps.empty) { UI.toast("User not found", "error"); UI.loader(false); return; }
             await updateDoc(doc(db, "chats", State.activeChatId), { members: arrayUnion(snaps.docs[0].id) });
             UI.toast("Member added successfully!", "success");
-        } catch(e) { UI.toast("Failed to add member", "error"); }
+        } catch(e) { UI.toast(e.message, "error"); }
         finally { UI.loader(false); }
     }
 };
 
-// --- WEBRTC CALLING SYSTEM ---
 const servers = { iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }] };
 let pc = null, localStream = null;
 window.Fluxgram.call = {
