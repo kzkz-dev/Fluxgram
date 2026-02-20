@@ -2,30 +2,44 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Fluxgram | Login</title>
     <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
-    <div class="auth-container">
-        <div class="auth-box" id="loginBox">
-            <h2 class="auth-title">Fluxgram</h2>
-            <div id="loginError" class="error-msg hidden"></div>
-            <input type="email" id="loginEmail" class="input-field" placeholder="Email">
-            <input type="password" id="loginPassword" class="input-field" placeholder="Password">
-            <button class="btn-primary" onclick="login()">Log In</button>
-            <div class="auth-link" onclick="toggleAuth('signup')">Don't have an account? Sign Up</div>
-            <div class="auth-link" onclick="resetPassword()" style="margin-top: 5px;">Forgot Password?</div>
-        </div>
 
-        <div class="auth-box hidden" id="signupBox">
-            <h2 class="auth-title">Create Account</h2>
-            <div id="signupError" class="error-msg hidden"></div>
-            <input type="text" id="regUsername" class="input-field" placeholder="Username (e.g. john_doe)">
-            <input type="email" id="regEmail" class="input-field" placeholder="Email">
-            <input type="password" id="regPassword" class="input-field" placeholder="Password (Min 6 chars)">
-            <button class="btn-primary" onclick="signup()">Sign Up</button>
-            <div class="auth-link" onclick="toggleAuth('login')">Already have an account? Log In</div>
+    <div id="toast-container"></div>
+    <div id="global-loader" class="loader-overlay hidden"><div class="spinner"></div></div>
+
+    <div class="app-container">
+        <div class="auth-wrapper">
+            <div class="auth-card">
+                <div class="auth-title" style="font-family: 'Outfit', sans-serif;"><i class="fas fa-bolt"></i> Fluxgram</div>
+                
+                <div id="login-form">
+                    <input type="email" id="login-email" class="auth-input" placeholder="Email Address" required>
+                    <input type="password" id="login-password" class="auth-input" placeholder="Password" required>
+                    <button class="auth-btn" onclick="Fluxgram.auth.login()">Sign In</button>
+                    <div class="auth-link" onclick="Fluxgram.ui.toggleForms('signup')">Create an Account</div>
+                    <div class="auth-link" style="color:var(--text-muted);" onclick="Fluxgram.ui.toggleForms('reset')">Forgot Password?</div>
+                </div>
+
+                <div id="signup-form" class="hidden">
+                    <input type="text" id="signup-username" class="auth-input" placeholder="Username (Unique)" required>
+                    <input type="email" id="signup-email" class="auth-input" placeholder="Email Address" required>
+                    <input type="password" id="signup-password" class="auth-input" placeholder="Password (Min 6 chars)" required>
+                    <button class="auth-btn" onclick="Fluxgram.auth.signup()">Sign Up</button>
+                    <div class="auth-link" onclick="Fluxgram.ui.toggleForms('login')">Already have an account? Sign In</div>
+                </div>
+
+                <div id="reset-form" class="hidden">
+                    <input type="email" id="reset-email" class="auth-input" placeholder="Enter Email Address" required>
+                    <button class="auth-btn" onclick="Fluxgram.auth.reset()">Send Reset Link</button>
+                    <div class="auth-link" onclick="Fluxgram.ui.toggleForms('login')">Back to Sign In</div>
+                </div>
+
+            </div>
         </div>
     </div>
 
