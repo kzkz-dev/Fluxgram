@@ -392,3 +392,39 @@ button, input, textarea { font-family: inherit; outline: none; border: none; }
 .info-row .val { color: white; font-size: 1.1rem; line-height: 1.4; word-wrap: break-word; }
 .info-row .lbl { color: var(--text-muted); font-size: 0.85rem; margin-top: 4px; }
 .smooth-fade { transition: opacity 0.3s ease, transform 0.3s ease; }
+/* --- ENHANCED CALL SCREEN --- */
+.call-overlay {
+    position: fixed; inset: 0; 
+    background: linear-gradient(180deg, #0088cc 0%, #004466 100%);
+    z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+    padding: 60px 20px; color: white;
+}
+.call-avatar {
+    width: 150px; height: 150px; border-radius: 50%;
+    border: 4px solid rgba(255,255,255,0.2); box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+.call-controls-row {
+    display: flex; justify-content: space-around; width: 100%; max-width: 400px;
+}
+.call-action-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 10px; cursor: pointer;
+}
+.call-circle-btn {
+    width: 60px; height: 60px; border-radius: 50%; background: rgba(255,255,255,0.1);
+    display: flex; align-items: center; justify-content: center; font-size: 1.5rem; transition: 0.2s;
+}
+.call-circle-btn.hangup { background: #ff3b30; }
+.call-circle-btn:active { transform: scale(0.9); }
+.call-action-btn span { font-size: 0.8rem; opacity: 0.8; }
+
+/* --- MESSAGE CONTEXT MENU --- */
+.msg-menu {
+    position: fixed; background: var(--bg-surface); border-radius: 12px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.5); z-index: 11000; width: 180px; padding: 5px;
+}
+.menu-item {
+    padding: 12px 15px; display: flex; align-items: center; gap: 12px;
+    cursor: pointer; border-radius: 8px; font-size: 0.95rem; transition: 0.2s;
+}
+.menu-item:hover { background: var(--bg-hover); }
+.menu-item.danger { color: #ff4757; }
