@@ -14,14 +14,16 @@
 
     <div class="app-container">
         <div class="header">
-            <div class="chat-header-info" onclick="window.location.href='dashboard.html'">
-                <i class="fas fa-arrow-left" style="color:var(--text-muted); margin-right:10px;"></i>
+            <button class="icon-btn" onclick="window.location.href='dashboard.html'" style="margin-right:10px;"><i class="fas fa-arrow-left"></i></button>
+            
+            <div class="chat-header-info" onclick="Fluxgram.ui.showProfile()">
                 <div class="avatar" id="chat-avatar"></div>
                 <div class="chat-header-text">
                     <div class="chat-name" id="chat-name">Loading...</div>
                     <div class="chat-status" id="chat-status">Connecting...</div>
                 </div>
             </div>
+            
             <div style="display:flex; gap: 5px; align-items: center;">
                 <button class="icon-btn" id="btn-copy-link" onclick="Fluxgram.chat.copyLink()"><i class="fas fa-link"></i></button>
                 <button class="icon-btn hidden" id="btn-add-member" onclick="Fluxgram.chat.promptAddMember()"><i class="fas fa-user-plus"></i></button>
@@ -39,6 +41,35 @@
                     <textarea id="msg-input" class="msg-input" rows="1" placeholder="Message..."></textarea>
                 </div>
                 <button class="send-btn" onclick="Fluxgram.chat.send()"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <div id="profile-view" class="hidden" style="position: absolute; inset: 0; background: var(--bg-base); z-index: 9000; display: flex; flex-direction: column;">
+        <div class="header">
+            <button class="icon-btn" onclick="Fluxgram.ui.hideProfile()"><i class="fas fa-arrow-left"></i></button>
+            <div class="header-title">Info</div>
+        </div>
+        <div style="flex:1; overflow-y:auto;">
+            <div style="padding: 40px 20px; text-align: center; background: var(--bg-surface); border-bottom: 1px solid var(--divider);">
+                <div class="avatar" id="pv-avatar" style="width: 120px; height: 120px; font-size: 4rem; margin: 0 auto 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">U</div>
+                <h2 id="pv-name" style="font-size: 1.8rem; font-weight: 600; margin-bottom: 5px; color:white;">Name</h2>
+                <p id="pv-status" style="color: var(--accent); font-size: 1rem;">Status</p>
+            </div>
+            
+            <div style="background: var(--bg-surface); margin-top: 15px; border-top: 1px solid var(--divider); border-bottom: 1px solid var(--divider);">
+                <div id="pv-bio-box" style="padding: 15px 20px; border-bottom: 1px solid var(--divider);">
+                    <div style="color: var(--text-main); font-size: 1.1rem;" id="pv-bio">Bio text</div>
+                    <div style="color: var(--text-muted); font-size: 0.85rem; margin-top: 5px;" id="pv-bio-label">Bio</div>
+                </div>
+                <div id="pv-username-box" style="padding: 15px 20px; border-bottom: 1px solid var(--divider);">
+                    <div style="color: var(--text-main); font-size: 1.1rem;" id="pv-username">@username</div>
+                    <div style="color: var(--text-muted); font-size: 0.85rem; margin-top: 5px;">Username</div>
+                </div>
+                <div id="pv-phone-box" class="hidden" style="padding: 15px 20px;">
+                    <div style="color: var(--text-main); font-size: 1.1rem;" id="pv-phone">+880...</div>
+                    <div style="color: var(--text-muted); font-size: 0.85rem; margin-top: 5px;">Mobile</div>
+                </div>
             </div>
         </div>
     </div>
