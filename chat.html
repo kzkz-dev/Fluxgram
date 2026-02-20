@@ -49,7 +49,6 @@
 
             <div class="input-area" id="input-area" style="position:relative;">
                 <button class="icon-btn" onclick="Fluxgram.chat.toggleEmoji()"><i class="far fa-smile"></i></button>
-                
                 <button class="icon-btn" onclick="document.getElementById('chat-file-input').click()"><i class="fas fa-paperclip"></i></button>
                 <input type="file" id="chat-file-input" class="hidden" accept="image/*" onchange="Fluxgram.chat.sendImage(event)">
 
@@ -63,26 +62,66 @@
         </div>
     </div>
 
-    <div id="profile-view" class="hidden" style="position: absolute; inset: 0; background: var(--bg-base); z-index: 9000; display: flex; flex-direction: column;">
-        <div class="header">
-            <button class="icon-btn" onclick="Fluxgram.ui.hideProfile()"><i class="fas fa-arrow-left"></i></button>
-            <div class="header-title">Info</div>
-            <button class="icon-btn hidden" id="btn-edit-chat" onclick="Fluxgram.profile.openChatEdit()"><i class="fas fa-edit"></i></button>
+    <div id="profile-view" class="hidden" style="position: absolute; inset: 0; background: #1c242f; z-index: 9000; display: flex; flex-direction: column;">
+        <div class="header" style="background: transparent; border: none; position: absolute; top:0; width: 100%; z-index: 2;">
+            <button class="icon-btn" onclick="Fluxgram.ui.hideProfile()" style="color: white; text-shadow: 0 1px 5px rgba(0,0,0,0.8);"><i class="fas fa-arrow-left"></i></button>
+            <div class="header-title" style="color: white; text-shadow: 0 1px 5px rgba(0,0,0,0.8);">Profile</div>
+            <button class="icon-btn hidden" id="btn-edit-chat" onclick="Fluxgram.profile.openChatEdit()" style="color: white; text-shadow: 0 1px 5px rgba(0,0,0,0.8);"><i class="fas fa-edit"></i></button>
         </div>
-        <div style="flex:1; overflow-y:auto;">
-            <div style="padding: 40px 20px; text-align: center; background: var(--bg-surface); border-bottom: 1px solid var(--divider);">
-                <div class="avatar" id="pv-avatar" style="width: 120px; height: 120px; font-size: 4rem; margin: 0 auto 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); position: relative; overflow: hidden;">U</div>
-                <h2 id="pv-name" style="font-size: 1.8rem; font-weight: 600; margin-bottom: 5px; color:white;">Name</h2>
-                <p id="pv-status" style="color: var(--accent); font-size: 1rem;">Status</p>
-            </div>
-            <div style="background: var(--bg-surface); margin-top: 15px; border-top: 1px solid var(--divider); border-bottom: 1px solid var(--divider);">
-                <div id="pv-bio-box" style="padding: 15px 20px; border-bottom: 1px solid var(--divider);">
-                    <div style="color: var(--text-main); font-size: 1.1rem;" id="pv-bio">Bio text</div>
-                    <div style="color: var(--text-muted); font-size: 0.85rem; margin-top: 5px;" id="pv-bio-label">Bio</div>
+
+        <div style="flex:1; overflow-y:auto; padding-bottom: 30px;">
+            <div class="premium-gradient">
+                <div class="avatar" id="pv-avatar" style="width: 140px; height: 140px; font-size: 4.5rem; margin: 0 auto 15px; border: 3px solid rgba(255,255,255,0.4); box-shadow: 0 10px 25px rgba(0,0,0,0.3); position: relative; overflow: hidden; background: var(--bg-surface);">U</div>
+                <h2 id="pv-name" style="font-size: 1.8rem; font-weight: 700; margin-bottom: 5px; color:white; text-shadow: 0 2px 5px rgba(0,0,0,0.4);">Name</h2>
+                <p id="pv-status" style="color: rgba(255,255,255,0.9); font-size: 1rem; font-weight: 500;">last seen recently</p>
+                
+                <div style="display: flex; justify-content: center; gap: 15px; margin-top: 25px; padding: 0 10px;">
+                    <div class="profile-action-btn" onclick="Fluxgram.ui.hideProfile()">
+                        <div class="icon"><i class="fas fa-comment"></i></div>
+                        <span>Message</span>
+                    </div>
+                    <div class="profile-action-btn" id="pv-btn-audio" onclick="Fluxgram.call.startCall('audio')">
+                        <div class="icon"><i class="fas fa-phone"></i></div>
+                        <span>Call</span>
+                    </div>
+                    <div class="profile-action-btn" id="pv-btn-video" onclick="Fluxgram.call.startCall('video')">
+                        <div class="icon"><i class="fas fa-video"></i></div>
+                        <span>Video</span>
+                    </div>
+                    <div class="profile-action-btn" onclick="Fluxgram.chat.copyLink()">
+                        <div class="icon"><i class="fas fa-share"></i></div>
+                        <span>Share</span>
+                    </div>
                 </div>
-                <div id="pv-username-box" style="padding: 15px 20px; border-bottom: 1px solid var(--divider);">
-                    <div style="color: var(--text-main); font-size: 1.1rem;" id="pv-username">@username</div>
-                    <div style="color: var(--text-muted); font-size: 0.85rem; margin-top: 5px;">Username</div>
+            </div>
+            
+            <div style="background: var(--bg-surface); margin-top: -15px; border-radius: 20px 20px 0 0; padding-top: 15px; position: relative; z-index: 1;">
+                <div class="tg-section" style="margin-bottom: 0;">
+                    
+                    <div id="pv-bio-box" class="tg-item">
+                        <div class="tg-icon"><i class="fas fa-info-circle"></i></div>
+                        <div style="flex: 1; border-bottom: 1px solid var(--divider); padding-bottom: 10px;">
+                            <span class="tg-text-main" id="pv-bio" style="white-space: pre-wrap;">Bio text</span>
+                            <span class="tg-text-sub" id="pv-bio-label">Bio</span>
+                        </div>
+                    </div>
+
+                    <div id="pv-username-box" class="tg-item">
+                        <div class="tg-icon"><i class="fas fa-at"></i></div>
+                        <div style="flex: 1; border-bottom: 1px solid var(--divider); padding-bottom: 10px;">
+                            <span class="tg-text-main" id="pv-username">@username</span>
+                            <span class="tg-text-sub">Username</span>
+                        </div>
+                    </div>
+
+                    <div id="pv-phone-box" class="tg-item hidden">
+                        <div class="tg-icon"><i class="fas fa-envelope"></i></div>
+                        <div style="flex: 1; padding-bottom: 10px;">
+                            <span class="tg-text-main" id="pv-phone">email@email.com</span>
+                            <span class="tg-text-sub">Email Address</span>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
@@ -118,19 +157,19 @@
         <video id="localVideo" style="width: 120px; height: 160px; position: absolute; top: 20px; right: 20px; border-radius: 12px; border: 2px solid var(--accent); object-fit: cover; z-index: 2; background: #222;" autoplay playsinline muted></video>
         <div style="position: absolute; inset: 0; z-index: 3; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 50px 20px; pointer-events: none;">
             <div style="text-align:center; margin-top: 20px;">
-                <h2 id="callName" style="font-size:2.5rem; color:white;">Name</h2>
-                <p id="callStatus" style="color:var(--accent); font-size:1.1rem; margin-top:10px;">Ringing...</p>
+                <h2 id="callName" style="font-size:2.5rem; color:white; text-shadow: 0 2px 5px rgba(0,0,0,0.8);">Name</h2>
+                <p id="callStatus" style="color:var(--accent); font-size:1.1rem; margin-top:10px; text-shadow: 0 1px 3px rgba(0,0,0,0.8);">Ringing...</p>
             </div>
             <div id="call-controls-active" class="hidden" style="display:flex; gap:30px; pointer-events: all;">
-                <div class="call-btn" onclick="Fluxgram.call.endCall()" style="background: var(--danger); width:65px; height:65px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.5rem; color:white; cursor:pointer;"><i class="fas fa-phone-slash"></i></div>
+                <div class="call-btn" onclick="Fluxgram.call.endCall()" style="background: var(--danger); width:65px; height:65px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.5rem; color:white; cursor:pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.5);"><i class="fas fa-phone-slash"></i></div>
             </div>
             <div id="call-controls-incoming" class="hidden" style="display:flex; gap:50px; pointer-events: all;">
-                <div class="call-btn" onclick="Fluxgram.call.endCall()" style="background: var(--danger); width:65px; height:65px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.5rem; color:white; cursor:pointer;"><i class="fas fa-phone-slash"></i></div>
-                <div class="call-btn" onclick="Fluxgram.call.acceptCall()" style="background: var(--success); width:65px; height:65px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.5rem; color:white; cursor:pointer;"><i class="fas fa-phone"></i></div>
+                <div class="call-btn" onclick="Fluxgram.call.endCall()" style="background: var(--danger); width:65px; height:65px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.5rem; color:white; cursor:pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.5);"><i class="fas fa-phone-slash"></i></div>
+                <div class="call-btn" onclick="Fluxgram.call.acceptCall()" style="background: var(--success); width:65px; height:65px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.5rem; color:white; cursor:pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.5);"><i class="fas fa-phone"></i></div>
             </div>
         </div>
     </div>
 
-    <script type="module" src="app.js?v=6"></script>
+    <script type="module" src="app.js?v=7"></script>
 </body>
 </html>
