@@ -1,5 +1,5 @@
 // ============================================================================
-// app.js - Fluxgram Engine (Premium Profile UI + Full Features)
+// app.js - Fluxgram Engine (Smooth My Profile View Edition)
 // ============================================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateEmail, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -41,7 +41,6 @@ const getMillis = (ts) => {
     return 0;
 };
 
-// --- UTILS & COMPRESSORS ---
 window.Fluxgram.utils = {
     isUsernameUnique: async (username, currentUsername = null) => {
         const u = username.toLowerCase().replace('@', '');
@@ -76,7 +75,6 @@ window.Fluxgram.utils = {
 };
 const Utils = window.Fluxgram.utils;
 
-// --- UI HELPERS ---
 window.Fluxgram.ui = {
     loader: (show) => { const l = document.getElementById('global-loader'); if(l) l.classList.toggle('hidden', !show); },
     toast: (msg, type = 'success') => {
@@ -96,7 +94,6 @@ window.Fluxgram.ui = {
     autoResize: (el) => { if (el) { el.style.height = 'auto'; el.style.height = (el.scrollHeight) + 'px'; } },
     getParam: (param) => new URLSearchParams(window.location.search).get(param),
     
-    // 🔥 UPDATED: PREMIUM PROFILE VIEW 🔥
     showProfile: () => {
         const pv = document.getElementById('profile-view');
         if(!pv) return;
@@ -109,7 +106,6 @@ window.Fluxgram.ui = {
             document.getElementById('pv-bio').innerText = d.desc || "No description provided.";
             document.getElementById('pv-bio-label').innerText = "Description";
             
-            // Hide Call Buttons for Groups
             document.getElementById('pv-btn-audio').classList.add('hidden');
             document.getElementById('pv-btn-video').classList.add('hidden');
 
@@ -127,7 +123,6 @@ window.Fluxgram.ui = {
             document.getElementById('pv-bio').innerText = u.bio || "Available on Fluxgram";
             document.getElementById('pv-bio-label').innerText = "Bio";
             
-            // Show Call Buttons for Users
             document.getElementById('pv-btn-audio').classList.remove('hidden');
             document.getElementById('pv-btn-video').classList.remove('hidden');
 
@@ -144,7 +139,6 @@ window.Fluxgram.ui = {
 };
 const UI = window.Fluxgram.ui;
 
-// --- AUTHENTICATION ---
 window.Fluxgram.auth = {
     login: async () => {
         const e = document.getElementById('login-email').value.trim();
@@ -211,60 +205,69 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
-// --- PROFILE & SETTINGS MANAGER ---
+// --- 🔥 NEW: SMOOTH MY PROFILE MANAGER 🔥 ---
 window.Fluxgram.profile = {
-    previewImage: (event, imgId, textId) => {
-        const file = event.target.files[0];
-        if(file) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                document.getElementById(imgId).src = e.target.result;
-                document.getElementById(imgId).classList.remove('hidden');
-                if(document.getElementById(textId)) document.getElementById(textId).classList.add('hidden');
-            };
-            reader.readAsDataURL(file);
+    openMyProfile: () => {
+        if(!State.userData) return;
+        // Populate Display Data
+        document.getElementById('my-display-name').innerText = State.userData.name || State.userData.username;
+        document.getElementById('my-display-avatar').innerHTML = Utils.renderAvatarHTML(State.userData.photoURL, State.userData.username || 'U');
+        document.getElementById('my-display-email').innerText = State.userData.email || 'Not set';
+        document.getElementById('my-display-bio').innerText = State.userData.bio || 'Available on Fluxgram';
+        document.getElementById('my-display-username').innerText = `@${State.userData.username}`;
+        
+        // Show View State, Hide Edit State
+        document.getElementById('my-profile-view-state').style.display = 'flex';
+        document.getElementById('my-profile-edit-state').style.display = 'none';
+        document.getElementById('my-profile-modal').classList.remove('hidden');
+    },
+
+    toggleEditState: (showEdit) => {
+        if(showEdit) {
+            document.getElementById('edit-user-name').value = State.userData.name || '';
+            document.getElementById('edit-user-username').value = State.userData.username || '';
+            document.getElementById('edit-user-bio').value = State.userData.bio || '';
+            
+            document.getElementById('my-profile-view-state').style.display = 'none';
+            document.getElementById('my-profile-edit-state').style.display = 'flex';
+        } else {
+            document.getElementById('my-profile-edit-state').style.display = 'none';
+            document.getElementById('my-profile-view-state').style.display = 'flex';
         }
     },
-    
-    openUserEdit: () => {
-        if(!State.userData) return;
-        document.getElementById('edit-user-name').value = State.userData.name || '';
-        document.getElementById('edit-user-username').value = State.userData.username || '';
-        document.getElementById('edit-user-bio').value = State.userData.bio || '';
-        document.getElementById('display-email').innerText = State.userData.email || 'Email not set';
-        
-        const preview = document.getElementById('user-avatar-preview');
-        const text = document.getElementById('user-avatar-text');
-        if(State.userData.photoURL && State.userData.photoURL.length > 10) {
-            preview.src = State.userData.photoURL; preview.classList.remove('hidden'); text.classList.add('hidden');
-        } else {
-            preview.classList.add('hidden'); text.classList.remove('hidden');
-            text.innerText = (State.userData.username || 'U').charAt(0).toUpperCase();
-        }
-        document.getElementById('edit-user-modal').classList.remove('hidden');
+
+    instantAvatarUpload: async (event) => {
+        const file = event.target.files[0];
+        if(!file) return;
+        UI.loader(true);
+        try {
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const base64Str = await Utils.compressToBase64(e.target.result, 300, 0.7);
+                await setDoc(doc(db, "users", State.currentUser.uid), { photoURL: base64Str }, { merge: true });
+                document.getElementById('my-display-avatar').innerHTML = Utils.renderAvatarHTML(base64Str, State.userData.username);
+                UI.toast("Profile photo updated!", "success");
+                UI.loader(false);
+            };
+            reader.readAsDataURL(file);
+        } catch(e) { UI.toast("Failed to update photo", "error"); UI.loader(false); }
     },
 
     saveUserEdit: async () => {
         const n = document.getElementById('edit-user-name').value.trim();
         let u = document.getElementById('edit-user-username').value.trim().replace('@', '');
         const b = document.getElementById('edit-user-bio').value.trim();
-        const previewImg = document.getElementById('user-avatar-preview');
-        
         if(!u || u.length < 6) return UI.toast("Username must be at least 6 chars", "error");
         
         UI.loader(true);
         try {
             if(!(await Utils.isUsernameUnique(u, State.userData.username))) throw new Error("This @username is already taken!");
+            await setDoc(doc(db, "users", State.currentUser.uid), { name: n, username: u, searchKey: u.toLowerCase(), bio: b }, { merge: true });
             
-            let finalPhotoURL = State.userData.photoURL !== undefined ? State.userData.photoURL : null;
-            
-            if(previewImg && !previewImg.classList.contains('hidden') && previewImg.src.startsWith('data:')) {
-                finalPhotoURL = await Utils.compressToBase64(previewImg.src, 150, 0.6); 
-            }
-
-            await setDoc(doc(db, "users", State.currentUser.uid), { name: n, username: u, searchKey: u.toLowerCase(), bio: b, photoURL: finalPhotoURL }, { merge: true });
-            document.getElementById('edit-user-modal').classList.add('hidden'); 
-            UI.toast("Profile updated successfully!");
+            // Go back to view state seamlessly
+            window.Fluxgram.profile.toggleEditState(false);
+            window.Fluxgram.profile.openMyProfile(); 
+            UI.toast("Info updated successfully!");
         } catch(e) { UI.toast(e.message, "error"); } finally { UI.loader(false); }
     },
 
@@ -272,14 +275,25 @@ window.Fluxgram.profile = {
         const pass = document.getElementById('email-change-password').value;
         const newEmail = document.getElementById('email-change-new').value.trim();
         if(!pass || !newEmail) return UI.toast("Enter password and new email", "error");
+        
         UI.loader(true);
         try {
             const credential = EmailAuthProvider.credential(State.currentUser.email, pass);
             await reauthenticateWithCredential(auth.currentUser, credential);
             await updateEmail(auth.currentUser, newEmail);
             await setDoc(doc(db, "users", State.currentUser.uid), { email: newEmail }, { merge: true });
-            document.getElementById('email-change-modal').classList.add('hidden'); document.getElementById('display-email').innerText = newEmail; UI.toast("Email updated successfully!", "success");
-        } catch(e) { UI.toast("Error: Incorrect password or invalid email.", "error"); } finally { UI.loader(false); }
+            
+            document.getElementById('email-change-modal').classList.add('hidden'); 
+            document.getElementById('my-display-email').innerText = newEmail; 
+            UI.toast("Email updated successfully!", "success");
+            document.getElementById('email-change-password').value = '';
+            document.getElementById('email-change-new').value = '';
+        } catch(e) { 
+            let errorMsg = e.message;
+            if (e.code === 'auth/email-already-in-use') errorMsg = "This email is already registered!";
+            else if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') errorMsg = "Incorrect current password!";
+            UI.toast(errorMsg, "error"); 
+        } finally { UI.loader(false); }
     },
 
     openChatEdit: () => {
@@ -307,13 +321,10 @@ window.Fluxgram.profile = {
         UI.loader(true);
         try {
             if(u && !(await Utils.isUsernameUnique(u, State.activeChatData.username))) throw new Error("This @username is already taken!");
-            
             let finalPhotoURL = State.activeChatData.photoURL !== undefined ? State.activeChatData.photoURL : null;
-            
             if(previewImg && !previewImg.classList.contains('hidden') && previewImg.src.startsWith('data:')) {
                 finalPhotoURL = await Utils.compressToBase64(previewImg.src, 150, 0.6);
             }
-
             await updateDoc(doc(db, "chats", State.activeChatId), { name: n, username: u || null, searchKey: u ? u.toLowerCase() : null, desc: desc, photoURL: finalPhotoURL });
             document.getElementById('edit-chat-modal').classList.add('hidden'); 
             UI.toast("Updated successfully!"); 
@@ -327,10 +338,23 @@ window.Fluxgram.profile = {
             try { await deleteDoc(doc(db, "chats", State.activeChatId)); UI.toast("Deleted successfully"); window.location.href = 'dashboard.html'; } 
             catch(e) { UI.toast(e.message, "error"); UI.loader(false); }
         }
+    },
+    
+    // Group Photo Helper
+    previewImage: (event, imgId, textId) => {
+        const file = event.target.files[0];
+        if(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById(imgId).src = e.target.result;
+                document.getElementById(imgId).classList.remove('hidden');
+                if(document.getElementById(textId)) document.getElementById(textId).classList.add('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
     }
 };
 
-// --- DASHBOARD LOGIC ---
 window.Fluxgram.dash = {
     search: async () => {
         const term = document.getElementById('search-input').value.trim().toLowerCase().replace('@', '');
@@ -425,10 +449,6 @@ window.Fluxgram.dash = {
         });
     }
 };
-
-// --- CHAT LOGIC (IMAGES, VOICE & EMOJIS) ---
-let voiceRecorder;
-let voiceChunks = [];
 
 window.Fluxgram.chat = {
     init: async () => {
@@ -646,8 +666,9 @@ window.Fluxgram.chat = {
     }
 };
 
-const servers = { iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }] };
 let pc = null, localStream = null;
+const servers = { iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }] };
+
 window.Fluxgram.call = {
     startCall: async (type) => {
         if(!State.activeChatUser) return;
@@ -696,7 +717,5 @@ window.Fluxgram.call = {
         if(pc) { pc.close(); pc = null; } if(localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
         document.getElementById('remoteVideo').srcObject = null; document.getElementById('localVideo').srcObject = null;
         const callScreen = document.getElementById('call-screen'); if(callScreen) callScreen.classList.add('hidden'); State.callDocId = null;
-    },
-    toggleMic: () => { if(!localStream) return; const audioTrack = localStream.getAudioTracks()[0]; audioTrack.enabled = !audioTrack.enabled; document.getElementById('mic-icon').className = audioTrack.enabled ? 'fas fa-microphone' : 'fas fa-microphone-slash'; },
-    toggleCam: () => { if(!localStream) return; const videoTrack = localStream.getVideoTracks()[0]; if(videoTrack) { videoTrack.enabled = !videoTrack.enabled; document.getElementById('cam-icon').className = videoTrack.enabled ? 'fas fa-video' : 'fas fa-video-slash'; } }
+    }
 };
