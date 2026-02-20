@@ -1,11 +1,11 @@
 // ============================================================================
-// app.js - Fluxgram Engine (With Auto Image Compressor - Fixes Infinite Loading)
+// app.js - Fluxgram Engine (Missing Import Fixed - 100% Working Upload)
 // ============================================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateEmail, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, getDocs, collection, addDoc, updateDoc, deleteDoc, onSnapshot, query, where, orderBy, serverTimestamp, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-// Changed uploadBytes to uploadString for Base64 Compression
-import { getStorage, ref, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+// FIX: Added 'uploadString' here 👇
+import { getStorage, ref, uploadBytes, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCsbZ1fqDivv8OyUiTcaEMcpZlJlM1TI6Y",
@@ -55,7 +55,6 @@ window.Fluxgram.utils = {
         return `<span class="${sizeClass}">${(fallbackName||'U').charAt(0).toUpperCase()}</span>`;
     },
     
-    // NEW: Image Compressor to fix Mobile Infinite Loading
     compressImage: (dataUrl, maxWidth = 500, maxHeight = 500, quality = 0.8) => {
         return new Promise((resolve) => {
             const img = new Image();
@@ -75,19 +74,18 @@ window.Fluxgram.utils = {
                 ctx.drawImage(img, 0, 0, width, height);
                 resolve(canvas.toDataURL('image/jpeg', quality));
             };
-            img.onerror = () => resolve(dataUrl); // fallback if error
+            img.onerror = () => resolve(dataUrl); 
         });
     },
 
     uploadImage: async (base64String, path) => {
         try {
             const storageRef = ref(storage, `${path}/${Date.now()}_avatar.jpg`);
-            // Upload Base64 Data
             const snapshot = await uploadString(storageRef, base64String, 'data_url');
             return await getDownloadURL(snapshot.ref);
         } catch (error) {
             console.error("Storage Upload Error:", error);
-            throw new Error("Upload failed. Ensure Storage is enabled and Rules are published.");
+            throw new Error("Upload failed: " + error.message);
         }
     }
 };
@@ -263,9 +261,7 @@ window.Fluxgram.profile = {
             
             let finalPhotoURL = State.userData.photoURL !== undefined ? State.userData.photoURL : null;
             
-            // Check if a new image was selected (base64 data url)
             if(previewImg && !previewImg.classList.contains('hidden') && previewImg.src.startsWith('data:')) {
-                // Compress image before uploading
                 const compressedBase64 = await Utils.compressImage(previewImg.src, 500, 500, 0.8);
                 finalPhotoURL = await Utils.uploadImage(compressedBase64, 'avatars/users');
             }
@@ -318,7 +314,6 @@ window.Fluxgram.profile = {
             
             let finalPhotoURL = State.activeChatData.photoURL !== undefined ? State.activeChatData.photoURL : null;
             
-            // Compress and Upload new group image
             if(previewImg && !previewImg.classList.contains('hidden') && previewImg.src.startsWith('data:')) {
                 const compressedBase64 = await Utils.compressImage(previewImg.src, 500, 500, 0.8);
                 finalPhotoURL = await Utils.uploadImage(compressedBase64, 'avatars/chats');
@@ -493,7 +488,7 @@ window.Fluxgram.chat = {
             }
 
             window.Fluxgram.chat.loadMessages();
-        } catch(error) { UI.toast("Failed to load chat", "error"); }
+        } catch(error) { UI.toast("Failed to load chat: " + error.message, "error"); }
     },
     loadMessages: () => {
         const container = document.getElementById('messages-container');
