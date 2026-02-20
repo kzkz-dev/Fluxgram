@@ -1,11 +1,12 @@
 // ============================================================================
-// app.js - Fluxgram Engine (Profile Pics, Email Change & Settings)
+// app.js - Fluxgram Complete Enterprise Engine (Fixed Profile Edit Bug)
 // ============================================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateEmail, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, RecaptchaVerifier, signInWithPhoneNumber, updateEmail, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, getDocs, collection, addDoc, updateDoc, deleteDoc, onSnapshot, query, where, orderBy, serverTimestamp, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
+// --- 1. FIREBASE INITIALIZATION ---
 const firebaseConfig = {
     apiKey: "AIzaSyCsbZ1fqDivv8OyUiTcaEMcpZlJlM1TI6Y",
     authDomain: "fluxgram-87009.firebaseapp.com",
@@ -20,14 +21,25 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
+// --- 2. GLOBAL NAMESPACE ---
 window.Fluxgram = {
-    state: { currentUser: null, userData: null, activeChatId: null, activeChatUser: null, activeChatData: null, unsubMessages: null, unsubChats: null, typingTimeout: null, callDocId: null },
+    state: { 
+        currentUser: null, 
+        userData: null, 
+        activeChatId: null, 
+        activeChatUser: null, 
+        activeChatData: null, 
+        unsubMessages: null, 
+        unsubChats: null, 
+        typingTimeout: null, 
+        callDocId: null 
+    },
     ui: {}, auth: {}, dash: {}, chat: {}, call: {}, utils: {}, profile: {}
 };
 
 const State = window.Fluxgram.state;
 
-// --- UTILS & RENDERERS ---
+// --- 3. UTILS ---
 window.Fluxgram.utils = {
     isUsernameUnique: async (username, currentUsername = null) => {
         const u = username.toLowerCase().replace('@', '');
@@ -37,7 +49,9 @@ window.Fluxgram.utils = {
         const [sU, sC] = await Promise.all([getDocs(qUsers), getDocs(qChats)]);
         return sU.empty && sC.empty;
     },
-    parseMentions: (text) => text.replace(/@([a-zA-Z0-9_]{6,})/g, '<span style="color: var(--accent); cursor: pointer; text-decoration: underline;" onclick="Fluxgram.chat.openByUsername(\'$1\')">@$1</span>'),
+    parseMentions: (text) => {
+        return text.replace(/@([a-zA-Z0-9_]{6,})/g, '<span style="color: var(--accent); cursor: pointer; text-decoration: underline;" onclick="Fluxgram.chat.openByUsername(\'$1\')">@$1</span>');
+    },
     renderAvatarHTML: (photoURL, fallbackName, sizeClass = '') => {
         if(photoURL) return `<img src="${photoURL}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;" class="${sizeClass}">`;
         return `<span class="${sizeClass}">${(fallbackName||'U').charAt(0).toUpperCase()}</span>`;
@@ -50,16 +64,17 @@ window.Fluxgram.utils = {
 };
 const Utils = window.Fluxgram.utils;
 
-// --- UI HELPERS ---
+// --- 4. UI HELPERS & PROFILE VIEW ---
 window.Fluxgram.ui = {
     loader: (show) => { const l = document.getElementById('global-loader'); if(l) l.classList.toggle('hidden', !show); },
     toast: (msg, type = 'success') => {
         const container = document.getElementById('toast-container');
         if(!container) return;
-        const t = document.createElement('div');
-        t.className = `toast ${type}`; t.innerHTML = msg;
-        container.appendChild(t);
-        setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 3000);
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.innerHTML = msg;
+        container.appendChild(toast);
+        setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
     },
     toggleForms: (formType) => {
         ['login', 'signup', 'reset'].forEach(f => {
@@ -106,7 +121,7 @@ window.Fluxgram.ui = {
 };
 const UI = window.Fluxgram.ui;
 
-// --- AUTHENTICATION ---
+// --- 5. AUTHENTICATION ---
 window.Fluxgram.auth = {
     login: async () => {
         const e = document.getElementById('login-email').value.trim();
@@ -162,7 +177,7 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
-// --- PROFILE & SETTINGS MANAGER (AVATARS & EMAIL UPDATE) ---
+// --- PROFILE & SETTINGS MANAGER ---
 window.Fluxgram.profile = {
     previewImage: (event, imgId, textId) => {
         const file = event.target.files[0];
@@ -208,15 +223,27 @@ window.Fluxgram.profile = {
         try {
             if(!(await Utils.isUsernameUnique(u, State.userData.username))) throw new Error("This @username is already taken!");
 
-            let photoURL = State.userData.photoURL;
-            if(fileInput.files.length > 0) {
+            // FIX: Ensure photoURL is never undefined. Default to null.
+            let photoURL = State.userData.photoURL !== undefined ? State.userData.photoURL : null;
+            
+            if(fileInput && fileInput.files.length > 0) {
                 photoURL = await Utils.uploadImage(fileInput.files[0], 'avatars/users');
             }
 
-            await setDoc(doc(db, "users", State.currentUser.uid), { name: n, username: u, searchKey: u.toLowerCase(), bio: b, photoURL: photoURL }, { merge: true });
+            await setDoc(doc(db, "users", State.currentUser.uid), { 
+                name: n, 
+                username: u, 
+                searchKey: u.toLowerCase(), 
+                bio: b, 
+                photoURL: photoURL || null // Extra safety net
+            }, { merge: true });
+            
             document.getElementById('edit-user-modal').classList.add('hidden');
             UI.toast("Profile updated successfully!");
-        } catch(e) { UI.toast(e.message, "error"); }
+        } catch(e) { 
+            UI.toast(e.message, "error"); 
+            console.error("Save User Edit Error:", e);
+        }
         UI.loader(false);
     },
 
@@ -271,12 +298,19 @@ window.Fluxgram.profile = {
         try {
             if(u && !(await Utils.isUsernameUnique(u, State.activeChatData.username))) throw new Error("This @username is already taken!");
 
-            let photoURL = State.activeChatData.photoURL || null;
-            if(fileInput.files.length > 0) {
+            // FIX: Ensure photoURL is never undefined
+            let photoURL = State.activeChatData.photoURL !== undefined ? State.activeChatData.photoURL : null;
+            if(fileInput && fileInput.files.length > 0) {
                 photoURL = await Utils.uploadImage(fileInput.files[0], 'avatars/chats');
             }
 
-            await updateDoc(doc(db, "chats", State.activeChatId), { name: n, username: u || null, searchKey: u ? u.toLowerCase() : null, desc: desc, photoURL: photoURL });
+            await updateDoc(doc(db, "chats", State.activeChatId), { 
+                name: n, 
+                username: u || null, 
+                searchKey: u ? u.toLowerCase() : null, 
+                desc: desc, 
+                photoURL: photoURL || null // Extra safety net
+            });
             document.getElementById('edit-chat-modal').classList.add('hidden');
             UI.toast("Updated successfully!");
             UI.showProfile(); 
@@ -293,7 +327,7 @@ window.Fluxgram.profile = {
     }
 };
 
-// --- DASHBOARD & CHAT LOGIC (Updated to use renderAvatarHTML) ---
+// --- DASHBOARD & CHAT LOGIC ---
 window.Fluxgram.dash = {
     search: async () => {
         const term = document.getElementById('search-input').value.trim().toLowerCase().replace('@', '');
@@ -330,7 +364,6 @@ window.Fluxgram.dash = {
         const name = document.getElementById('create-name').value.trim();
         const desc = document.getElementById('create-desc').value.trim();
         let username = document.getElementById('create-username').value.trim().replace('@', '');
-        const fileInput = document.getElementById('create-avatar-input');
         
         if(!name) return UI.toast("Name is required", "error");
         if(username && username.length < 6) return UI.toast("Username must be at least 6 chars", "error");
@@ -339,11 +372,8 @@ window.Fluxgram.dash = {
         try {
             if(username && !(await Utils.isUsernameUnique(username))) throw new Error("This @username is already taken!");
             
-            let photoURL = null;
-            if(fileInput.files.length > 0) photoURL = await Utils.uploadImage(fileInput.files[0], 'avatars/chats');
-
             const newRef = await addDoc(collection(db, "chats"), {
-                type: type, name: name, desc: desc, username: username || null, searchKey: username ? username.toLowerCase() : null, photoURL: photoURL,
+                type: type, name: name, desc: desc, username: username || null, searchKey: username ? username.toLowerCase() : null, photoURL: null,
                 admin: State.currentUser.uid, members: [State.currentUser.uid], createdAt: serverTimestamp(), updatedAt: serverTimestamp(), lastMessage: `Created ${type}`, unreadCount: 0
             });
             window.location.href = `chat.html?chatId=${newRef.id}`;
