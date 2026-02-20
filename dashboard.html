@@ -116,18 +116,17 @@
     <div id="email-change-modal" class="hidden" style="position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:9900; display:flex; align-items:center; justify-content:center; padding:20px;">
         <div style="background:var(--bg-surface); padding:25px; border-radius:16px; width:100%; max-width:350px;">
             <h3 style="margin-bottom:10px; color:white;">Change Email</h3>
-            <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:15px;">For security, please enter your current password to set a new email.</p>
+            <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:15px;">A verification link will be sent to your new email. Click the link to confirm.</p>
             
-            <input type="password" id="email-change-password" class="auth-input" placeholder="Current Password" style="padding:12px; margin-bottom:10px;">
-            <input type="email" id="email-change-new" class="auth-input" placeholder="New Email Address" style="padding:12px; margin-bottom:20px;">
+            <input type="email" id="email-change-new" class="auth-input" placeholder="Enter New Email Address" style="padding:12px; margin-bottom:20px;">
             
             <div style="display:flex; gap:10px;">
                 <button onclick="document.getElementById('email-change-modal').classList.add('hidden')" style="flex:1; padding:10px; background:transparent; color:var(--text-muted); border:1px solid var(--divider); border-radius:8px;">Cancel</button>
-                <button onclick="Fluxgram.profile.changeEmail()" style="flex:1; padding:10px; background:var(--primary); color:white; border-radius:8px; font-weight:bold;">Update</button>
+                <button onclick="Fluxgram.profile.changeEmail()" style="flex:1; padding:10px; background:var(--primary); color:white; border-radius:8px; font-weight:bold;">Send Link</button>
             </div>
         </div>
     </div>
 
-    <script type="module" src="app.js"></script>
+    <script type="module" src="app.js?v=3"></script>
 </body>
 </html>
