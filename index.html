@@ -29,6 +29,7 @@
         <i class="fas fa-bolt splash-logo"></i>
         <div class="splash-text">Fluxgram</div>
     </div>
+
     <div id="toast-container"></div>
     <div id="global-loader" class="loader-overlay hidden"><div class="spinner"></div></div>
 
@@ -63,20 +64,9 @@
         </div>
     </div>
 
-    <script type="module" src="app.js?v=20"></script>
-
+    <script type="module" src="app.js?v=35"></script>
     <script>
-        window.addEventListener('load', () => {
-            // Give Firebase 1.2 seconds to check if logged in. 
-            // If logged in, app.js will redirect. If not, splash fades out to show login.
-            setTimeout(() => {
-                const splash = document.getElementById('splash-screen');
-                if(splash) {
-                    splash.style.opacity = '0';
-                    setTimeout(() => splash.style.visibility = 'hidden', 500);
-                }
-            }, 1200); 
-        });
+        // No auto-hide anymore! app.js will handle hiding the splash screen perfectly.
     </script>
 </body>
 </html>
