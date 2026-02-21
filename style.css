@@ -207,3 +207,35 @@ video::-webkit-media-controls, video::-webkit-media-controls-start-playback-butt
 .smooth-fade { transition: opacity 0.3s ease, transform 0.3s ease; }
 .recording { color: var(--danger) !important; animation: pulse 1s infinite; }
 @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+
+/* ==========================================
+   🔥 NEW: MESSAGE REPLY & BLUE TICKS 🔥
+   ========================================== */
+.msg-ticks { font-size: 0.75rem; margin-left: 6px; color: #7f91a4; display: inline-flex; gap: 2px; }
+.msg-ticks.read { color: #00a8ff; } /* Blue Tick Color */
+
+.replied-msg-box {
+    background: rgba(0, 0, 0, 0.2);
+    border-left: 3px solid var(--accent);
+    padding: 6px 10px;
+    border-radius: 4px;
+    margin-bottom: 6px;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+.replied-name { color: var(--accent); font-weight: bold; margin-bottom: 2px; font-size: 0.75rem; }
+.replied-text { color: rgba(255,255,255,0.8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+
+.reply-preview-bar {
+    background: var(--bg-hover);
+    padding: 10px 15px;
+    border-left: 4px solid var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-radius: 12px 12px 0 0;
+    margin-bottom: -5px; /* Pull down slightly into input area */
+    position: relative;
+    z-index: 5;
+    animation: slideUp 0.2s ease-out;
+}
