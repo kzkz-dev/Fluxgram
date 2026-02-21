@@ -24,8 +24,8 @@
             <div class="chat-header-info" onclick="Fluxgram.ui.showProfile()">
                 <div class="avatar" id="chat-avatar"></div>
                 <div class="chat-header-text">
-                    <div class="chat-name" id="chat-name">Loading...</div>
-                    <div class="chat-status" id="chat-status">Connecting...</div>
+                    <div class="chat-name" id="chat-name"></div>
+                    <div class="chat-status" id="chat-status"></div>
                 </div>
             </div>
             
@@ -56,11 +56,9 @@
                 <button class="icon-btn" onclick="Fluxgram.chat.toggleEmoji()"><i class="far fa-smile"></i></button>
                 <button class="icon-btn" onclick="document.getElementById('chat-file-input').click()"><i class="fas fa-paperclip"></i></button>
                 <input type="file" id="chat-file-input" class="hidden" accept="image/*" onchange="Fluxgram.chat.sendImage(event)">
-
                 <div class="input-wrapper">
                     <textarea id="msg-input" class="msg-input" rows="1" placeholder="Message..."></textarea>
                 </div>
-
                 <button class="icon-btn hidden" id="btn-send-text" onclick="Fluxgram.chat.send()"><i class="fas fa-paper-plane" style="color:var(--primary);"></i></button>
                 <button class="icon-btn" id="btn-record-voice" onmousedown="Fluxgram.chat.startVoice()" onmouseup="Fluxgram.chat.stopVoice()" ontouchstart="Fluxgram.chat.startVoice()" ontouchend="Fluxgram.chat.stopVoice()"><i class="fas fa-microphone"></i></button>
             </div>
@@ -175,21 +173,18 @@
     <div id="delete-msg-modal" class="hidden" style="position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:99999; display:flex; align-items:flex-end; justify-content:center; backdrop-filter:blur(2px); transition:0.3s;">
         <div style="background:var(--bg-surface); width:100%; max-width:600px; border-radius:20px 20px 0 0; padding:25px 20px; box-shadow:0 -5px 25px rgba(0,0,0,0.5); animation: slideUp 0.3s ease-out;">
             <h3 style="color:white; margin-bottom:15px; font-size:1.1rem; text-align:center;">Delete Message?</h3>
-            
             <button id="btn-delete-everyone" class="hidden" style="width:100%; padding:15px; background:rgba(255,59,48,0.1); color:var(--danger); border:1px solid var(--danger); border-radius:12px; font-weight:bold; font-size:1rem; margin-bottom:10px; display:flex; align-items:center; justify-content:center; gap:10px; cursor:pointer;">
                 <i class="fas fa-trash-alt"></i> Delete for everyone
             </button>
-            
             <button id="btn-delete-me" style="width:100%; padding:15px; background:var(--bg-hover); color:white; border-radius:12px; font-weight:bold; font-size:1rem; margin-bottom:10px; display:flex; align-items:center; justify-content:center; gap:10px; cursor:pointer;">
                 <i class="fas fa-eraser"></i> Delete for me
             </button>
-            
             <button onclick="document.getElementById('delete-msg-modal').classList.add('hidden')" style="width:100%; padding:15px; background:transparent; color:var(--text-muted); border-radius:12px; font-weight:bold; font-size:1rem; cursor:pointer;">
                 Cancel
             </button>
         </div>
     </div>
 
-    <script type="module" src="app.js?v=30"></script>
+    <script type="module" src="app.js?v=35"></script>
 </body>
 </html>
