@@ -19,7 +19,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 window.Fluxgram = {
-    state: { currentUser: null, userData: null, activeChatId: null, activeChatUser: null, activeChatData: null, unsubMessages: null, unsubChats: null, callDocId: null, startTime: null },
+    state: { currentUser: null, userData: null, activeChatId: null, activeChatUser: null, activeChatData: null, unsubMessages: null, unsubChats: null, callDocId: null, startTime: null, selectedMsgId: null },
     ui: {}, auth: {}, dash: {}, chat: {}, call: {}, utils: {}, profile: {}
 };
 
@@ -202,7 +202,6 @@ onAuthStateChanged(auth, async (user) => {
     UI.loader(false);
 });
 
-// 🔥 THE EDIT INFO FIX IS HERE 🔥
 window.Fluxgram.profile = {
     openMyProfile: () => {
         if(!State.userData) return;
@@ -515,6 +514,12 @@ window.Fluxgram.chat = {
             snapshot.forEach(docSnap => {
                 const msgId = docSnap.id;
                 const msg = docSnap.data();
+                
+                // 🔥 "Delete for me" Logic: Hide message if current user is in deletedFor array 🔥
+                if(msg.deletedFor && msg.deletedFor.includes(State.currentUser.uid)) {
+                    return; 
+                }
+
                 const isMe = msg.senderId === State.currentUser.uid;
                 const timeStr = formatTime(msg.timestamp);
                 const dateStr = formatDate(msg.timestamp);
@@ -546,18 +551,45 @@ window.Fluxgram.chat = {
         });
     },
 
-    showDeleteMenu: async (msgId, senderId) => {
+    // 🔥 NEW CUSTOM DELETE MENU LOGIC 🔥
+    showDeleteMenu: (msgId, senderId) => {
+        State.selectedMsgId = msgId;
+        
         const isMe = senderId === State.currentUser.uid;
         const isAdmin = State.activeChatData && State.activeChatData.admin === State.currentUser.uid;
         
-        let promptText = "Delete this message for me?";
-        if(isMe || isAdmin) promptText = "Delete this message for everyone?";
+        const modal = document.getElementById('delete-msg-modal');
+        const btnEveryone = document.getElementById('btn-delete-everyone');
+        const btnMe = document.getElementById('btn-delete-me');
+        
+        if(isMe || isAdmin) {
+            btnEveryone.classList.remove('hidden');
+        } else {
+            btnEveryone.classList.add('hidden');
+        }
+        
+        btnEveryone.onclick = () => window.Fluxgram.chat.executeDelete('everyone');
+        btnMe.onclick = () => window.Fluxgram.chat.executeDelete('me');
+        
+        modal.classList.remove('hidden');
+    },
 
-        if(confirm(promptText)) {
-            try {
-                await deleteDoc(doc(db, `chats/${State.activeChatId}/messages`, msgId));
-                UI.toast("Message deleted");
-            } catch(e) { UI.toast("Failed to delete", "error"); }
+    executeDelete: async (type) => {
+        const msgId = State.selectedMsgId;
+        if(!msgId) return;
+        document.getElementById('delete-msg-modal').classList.add('hidden');
+        
+        try {
+            const msgRef = doc(db, `chats/${State.activeChatId}/messages`, msgId);
+            if(type === 'everyone') {
+                await deleteDoc(msgRef);
+                UI.toast("Message deleted for everyone", "success");
+            } else if(type === 'me') {
+                await updateDoc(msgRef, { deletedFor: arrayUnion(State.currentUser.uid) });
+                UI.toast("Message deleted for you", "success");
+            }
+        } catch(e) {
+            UI.toast("Failed to delete", "error");
         }
     },
 
