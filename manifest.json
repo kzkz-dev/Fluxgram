@@ -1,0 +1,22 @@
+{
+  "name": "Fluxgram",
+  "short_name": "Fluxgram",
+  "description": "Premium Chat & Calling App",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0e1621",
+  "theme_color": "#1c242f",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3128/3128210.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3128/3128210.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
