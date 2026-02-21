@@ -41,9 +41,6 @@ const getMillis = (ts) => {
     return 0;
 };
 
-// ==========================================
-// 1. UTILS & BASE64 COMPRESSOR
-// ==========================================
 window.Fluxgram.utils = {
     isUsernameUnique: async (username, currentUsername = null) => {
         const u = username.toLowerCase().replace('@', '');
@@ -78,9 +75,6 @@ window.Fluxgram.utils = {
 };
 const Utils = window.Fluxgram.utils;
 
-// ==========================================
-// 2. UI HELPERS
-// ==========================================
 window.Fluxgram.ui = {
     loader: (show) => { const l = document.getElementById('global-loader'); if(l) l.classList.toggle('hidden', !show); },
     toast: (msg, type = 'success') => {
@@ -139,9 +133,6 @@ window.Fluxgram.ui = {
 };
 const UI = window.Fluxgram.ui;
 
-// ==========================================
-// 3. AUTHENTICATION & PRESENCE
-// ==========================================
 window.Fluxgram.auth = {
     login: async () => {
         const e = document.getElementById('login-email').value.trim();
@@ -186,7 +177,6 @@ document.addEventListener('visibilitychange', () => updatePresence(document.visi
 onAuthStateChanged(auth, async (user) => {
     const path = window.location.pathname.toLowerCase();
     
-    // Auto-redirect logic based on auth state
     if (user) {
         State.currentUser = user;
         onSnapshot(doc(db, "users", user.uid), (d) => { if(d.exists()) State.userData = d.data(); });
@@ -212,9 +202,7 @@ onAuthStateChanged(auth, async (user) => {
     UI.loader(false);
 });
 
-// ==========================================
-// 4. MY PROFILE & SETTINGS MANAGER
-// ==========================================
+// 🔥 THE EDIT INFO FIX IS HERE 🔥
 window.Fluxgram.profile = {
     openMyProfile: () => {
         if(!State.userData) return;
@@ -224,21 +212,28 @@ window.Fluxgram.profile = {
         document.getElementById('my-display-bio').innerText = State.userData.bio || 'Available on Fluxgram';
         document.getElementById('my-display-username').innerText = `@${State.userData.username}`;
         
+        document.getElementById('my-profile-edit-state').classList.add('hidden');
+        document.getElementById('my-profile-view-state').classList.remove('hidden');
         document.getElementById('my-profile-view-state').style.display = 'flex';
-        document.getElementById('my-profile-edit-state').style.display = 'none';
+        
         document.getElementById('my-profile-modal').classList.remove('hidden');
     },
     toggleEditState: (showEdit) => {
+        const viewState = document.getElementById('my-profile-view-state');
+        const editState = document.getElementById('my-profile-edit-state');
+        
         if(showEdit) {
             document.getElementById('edit-user-name').value = State.userData.name || '';
             document.getElementById('edit-user-username').value = State.userData.username || '';
             document.getElementById('edit-user-bio').value = State.userData.bio || '';
             
-            document.getElementById('my-profile-view-state').style.display = 'none';
-            document.getElementById('my-profile-edit-state').style.display = 'flex';
+            viewState.classList.add('hidden');
+            editState.classList.remove('hidden');
+            editState.style.display = 'flex';
         } else {
-            document.getElementById('my-profile-edit-state').style.display = 'none';
-            document.getElementById('my-profile-view-state').style.display = 'flex';
+            editState.classList.add('hidden');
+            viewState.classList.remove('hidden');
+            viewState.style.display = 'flex';
         }
     },
     instantAvatarUpload: async (event) => {
@@ -268,7 +263,6 @@ window.Fluxgram.profile = {
             if(!(await Utils.isUsernameUnique(u, State.userData.username))) throw new Error("This @username is already taken!");
             await setDoc(doc(db, "users", State.currentUser.uid), { name: n, username: u, searchKey: u.toLowerCase(), bio: b }, { merge: true });
             
-            // Go back to view mode and refresh data
             State.userData.name = n;
             State.userData.username = u;
             State.userData.bio = b;
@@ -293,7 +287,6 @@ window.Fluxgram.profile = {
         } catch(e) { UI.toast("Error: Incorrect password or invalid email.", "error"); } finally { UI.loader(false); }
     },
 
-    // Group Chat Edit Logic
     previewImage: (event, imgId, textId) => {
         const file = event.target.files[0];
         if(file) {
@@ -349,9 +342,6 @@ window.Fluxgram.profile = {
     }
 };
 
-// ==========================================
-// 5. DASHBOARD & GROUPS LOGIC
-// ==========================================
 window.Fluxgram.dash = {
     search: async () => {
         const term = document.getElementById('search-input').value.trim().toLowerCase().replace('@', '');
@@ -446,9 +436,6 @@ window.Fluxgram.dash = {
     }
 };
 
-// ==========================================
-// 6. ADVANCED CHAT LOGIC (DELETE, VOICE, EMOJI)
-// ==========================================
 window.Fluxgram.chat = {
     init: async () => {
         const otherUid = UI.getParam('uid');       
@@ -517,7 +504,6 @@ window.Fluxgram.chat = {
         } catch(error) { UI.toast("Failed to load chat", "error"); }
     },
     
-    // LOAD MESSAGES WITH DATE DIVIDER & DELETE ONCLICK
     loadMessages: () => {
         const container = document.getElementById('messages-container');
         if(!container) return;
@@ -549,7 +535,6 @@ window.Fluxgram.chat = {
 
                 const senderNameHTML = (!isMe && State.activeChatData && (State.activeChatData.type === 'group' || State.activeChatData.type === 'channel')) ? `<div style="font-size:0.75rem; color:var(--accent); font-weight:bold; margin-bottom:3px;">User: ${msg.senderId.substring(0,5)}</div>` : '';
 
-                // Onclick for Delete feature
                 container.innerHTML += `
                     <div class="msg-row ${isMe ? 'msg-tx' : 'msg-rx'}">
                         <div class="msg-bubble" onclick="Fluxgram.chat.showDeleteMenu('${msgId}', '${msg.senderId}')">
@@ -561,7 +546,6 @@ window.Fluxgram.chat = {
         });
     },
 
-    // DELETE MESSAGE
     showDeleteMenu: async (msgId, senderId) => {
         const isMe = senderId === State.currentUser.uid;
         const isAdmin = State.activeChatData && State.activeChatData.admin === State.currentUser.uid;
@@ -690,9 +674,6 @@ window.Fluxgram.chat = {
     }
 };
 
-// ==========================================
-// 7. HD WEBRTC CALLING & HISTORY LOG
-// ==========================================
 let pc = null, localStream = null;
 const servers = { 
     iceServers: [
@@ -718,7 +699,6 @@ window.Fluxgram.call = {
             localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true }); 
             document.getElementById('localVideo').srcObject = localStream;
             
-            // Set Initial Video State based on button clicked
             const videoTrack = localStream.getVideoTracks()[0];
             videoTrack.enabled = (type === 'video');
             document.getElementById('call-video-toggle').innerHTML = videoTrack.enabled ? '<i class="fas fa-video"></i><br><span style="font-size:0.7rem;">Video</span>' : '<i class="fas fa-video-slash" style="color:var(--danger);"></i><br><span style="font-size:0.7rem;">Video</span>';
@@ -813,7 +793,6 @@ window.Fluxgram.call = {
         const callScreen = document.getElementById('call-screen'); 
         if(callScreen) callScreen.classList.add('hidden'); 
         
-        // Write Call Log to Chat History
         if(writeHistory && State.activeChatId) {
             let durationText = "Call Declined";
             let callStatus = "missed";
@@ -847,7 +826,6 @@ window.Fluxgram.call = {
         } 
     },
     toggleSpeaker: () => {
-        // Since pure web cannot toggle hardware speaker easily across all devices
         UI.toast("Speaker toggle available in native app.", "success");
     }
 };
