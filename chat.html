@@ -91,21 +91,58 @@
     </div>
 
     <div id="edit-chat-modal" class="hidden" style="position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:9500; display:flex; align-items:center; justify-content:center; padding:20px; backdrop-filter:blur(3px);">
-        <button onclick="document.getElementById('edit-chat-modal').classList.add('hidden')">Cancel</button>
+        <div style="background:var(--bg-surface); padding:25px; border-radius:16px; width:100%; max-width:350px;">
+            <h2 style="margin-bottom:15px; color:white; text-align:center;">Edit Settings</h2>
+            <div class="avatar-upload-wrap" style="padding:10px 0; background:transparent;">
+                <div class="avatar-upload-circle" onclick="document.getElementById('chat-avatar-input').click()">
+                    <span id="chat-avatar-text">G</span>
+                    <img id="chat-avatar-preview" src="" class="hidden">
+                    <div class="avatar-camera-icon"><i class="fas fa-camera"></i></div>
+                </div>
+                <input type="file" id="chat-avatar-input" accept="image/*" class="hidden" onchange="Fluxgram.profile.previewImage(event, 'chat-avatar-preview', 'chat-avatar-text')">
+            </div>
+            <label style="color:var(--accent); font-size:0.85rem; display:block;">Name</label>
+            <input type="text" id="edit-chat-name" class="auth-input" style="padding:10px; margin-bottom:10px;">
+            <label style="color:var(--accent); font-size:0.85rem; display:block;">@username</label>
+            <input type="text" id="edit-chat-username" class="auth-input" style="padding:10px; margin-bottom:10px;">
+            <label style="color:var(--accent); font-size:0.85rem; display:block;">Description</label>
+            <textarea id="edit-chat-desc" class="auth-input" rows="2" style="padding:10px; margin-bottom:15px; resize:none;"></textarea>
+            <button onclick="Fluxgram.profile.deleteChat()" style="width:100%; padding:10px; background:rgba(255,59,48,0.1); color:var(--danger); border:1px solid var(--danger); border-radius:8px; font-weight:bold; margin-bottom: 15px; cursor:pointer;"><i class="fas fa-trash"></i> Delete Group/Channel</button>
+            <div style="display:flex; gap:10px;">
+                <button onclick="document.getElementById('edit-chat-modal').classList.add('hidden')" style="flex:1; padding:10px; background:transparent; color:var(--text-muted); border:1px solid var(--divider); border-radius:8px;">Cancel</button>
+                <button onclick="Fluxgram.profile.saveChatEdit()" style="flex:1; padding:10px; background:var(--primary); color:white; border-radius:8px; font-weight:bold;">Save</button>
+            </div>
+        </div>
     </div>
 
     <div id="call-screen" class="hidden call-overlay-new" style="position:fixed; inset:0; z-index:99999;">
-        <div class="call-btn-circle danger" onclick="Fluxgram.call.endCall()"><i class="fas fa-phone-slash"></i></div>
+        <video id="remoteVideo" style="width:100%; height:100%; object-fit:cover; position:absolute; inset:0; z-index:1;" autoplay playsinline></video>
+        <video id="localVideo" style="width:100px; height:140px; position:absolute; top:30px; right:20px; border-radius:12px; z-index:3; border:2px solid var(--accent); background: #222;" autoplay playsinline muted></video>
+        
+        <div style="position:relative; z-index:2; margin-top:20px;">
+            <h2 id="callName" style="color:white; font-size:2rem; margin-top:15px; text-shadow: 0 2px 5px rgba(0,0,0,0.8);">Name</h2>
+            <p id="callStatus" style="color:var(--accent); font-size:1.1rem; text-shadow: 0 1px 3px rgba(0,0,0,0.8);">Ringing...</p>
+        </div>
+
+        <div id="call-controls-active" class="hidden" style="position:relative; z-index:2; width:100%; display:flex; justify-content:space-around; align-items:center; padding-bottom:20px;">
+            <div class="call-btn-circle" onclick="Fluxgram.call.toggleSpeaker()"><i class="fas fa-volume-up"></i><br><span style="font-size:0.7rem;">Speaker</span></div>
+            <div class="call-btn-circle" id="call-video-toggle" onclick="Fluxgram.call.toggleVideo()"><i class="fas fa-video-slash"></i><br><span style="font-size:0.7rem;">Video</span></div>
+            <div class="call-btn-circle" onclick="Fluxgram.call.toggleMic()"><i id="mic-icon" class="fas fa-microphone"></i><br><span style="font-size:0.7rem;">Mute</span></div>
+            <div class="call-btn-circle danger" onclick="Fluxgram.call.endCall()"><i class="fas fa-phone-slash"></i><br><span style="font-size:0.7rem;">End</span></div>
+        </div>
+
+        <div id="call-controls-incoming" class="hidden" style="position:relative; z-index:10; width:100%; display:flex; justify-content:center; gap:50px; padding-bottom: 20px;">
+             <div class="call-btn-circle danger" onclick="Fluxgram.call.endCall()" style="width:70px; height:70px; font-size: 1.8rem;"><i class="fas fa-phone-slash"></i></div>
+             <div class="call-btn-circle" style="background:var(--success); width:70px; height:70px; font-size: 1.8rem;" onclick="Fluxgram.call.acceptCall()"><i class="fas fa-phone"></i></div>
+        </div>
     </div>
 
     <div id="msg-action-modal" class="hidden" style="position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:99999; display:flex; align-items:flex-end; justify-content:center; backdrop-filter:blur(2px); transition:0.3s;">
         <div style="background:var(--bg-surface); width:100%; max-width:600px; border-radius:20px 20px 0 0; padding:25px 20px; box-shadow:0 -5px 25px rgba(0,0,0,0.5); animation: slideUp 0.3s ease-out;">
             <h3 style="color:white; margin-bottom:15px; font-size:1.1rem; text-align:center;">Message Options</h3>
-            
             <button id="btn-reply-msg" style="width:100%; padding:15px; background:var(--bg-hover); color:var(--accent); border-radius:12px; font-weight:bold; font-size:1rem; margin-bottom:10px; display:flex; align-items:center; justify-content:center; gap:10px; cursor:pointer;">
                 <i class="fas fa-reply"></i> Reply
             </button>
-
             <button id="btn-delete-everyone" class="hidden" style="width:100%; padding:15px; background:rgba(255,59,48,0.1); color:var(--danger); border:1px solid var(--danger); border-radius:12px; font-weight:bold; font-size:1rem; margin-bottom:10px; display:flex; align-items:center; justify-content:center; gap:10px; cursor:pointer;">
                 <i class="fas fa-trash-alt"></i> Delete for everyone
             </button>
@@ -118,6 +155,6 @@
         </div>
     </div>
 
-    <script type="module" src="app.js?v=45"></script>
+    <script type="module" src="app.js?v=50"></script>
 </body>
 </html>
