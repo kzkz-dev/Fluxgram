@@ -1,9 +1,12 @@
 // ============================================================================
-// app.js - Fluxgram Ultimate Engine (All Previous Features + New Pro Features)
+// app.js - Fluxgram Ultimate Engine (Telegram-Style Connection Status Bar)
 // ============================================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateEmail, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+// 🔥 Added 'getDatabase' for connection monitoring 🔥
 import { getFirestore, doc, setDoc, getDoc, getDocs, collection, addDoc, updateDoc, deleteDoc, onSnapshot, query, where, orderBy, serverTimestamp, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
 
 const firebaseConfig = {
     apiKey: "AIzaSyCsbZ1fqDivv8OyUiTcaEMcpZlJlM1TI6Y",
@@ -11,19 +14,65 @@ const firebaseConfig = {
     projectId: "fluxgram-87009",
     storageBucket: "fluxgram-87009.firebasestorage.app",
     messagingSenderId: "698836385253",
-    appId: "1:698836385253:web:c40e67ee9006cff536830c"
+    appId: "1:698836385253:web:c40e67ee9006cff536830c",
+    databaseURL: "https://fluxgram-87009-default-rtdb.firebaseio.com" // Added for connection monitoring
 };
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const rtdb = getDatabase(app); // Realtime DB for connection check
 
 window.Fluxgram = {
-    state: { currentUser: null, userData: null, activeChatId: null, activeChatUser: null, activeChatData: null, unsubMessages: null, unsubChats: null, callDocId: null, startTime: null, selectedMsgId: null },
-    ui: {}, auth: {}, dash: {}, chat: {}, call: {}, utils: {}, profile: {}
+    state: { currentUser: null, userData: null, activeChatId: null, activeChatUser: null, activeChatData: null, unsubMessages: null, unsubChats: null, callDocId: null, startTime: null, selectedMsgId: null, isFirebaseConnected: false, isInitialLoad: true },
+    ui: {}, auth: {}, dash: {}, chat: {}, call: {}, utils: {}, profile: {}, network: {}
 };
 
 const State = window.Fluxgram.state;
+
+// ==========================================
+// 🔥 NEW: NETWORK & CONNECTION MANAGER 🔥
+// ==========================================
+window.Fluxgram.network = {
+    init: () => {
+        // Monitor Browser Network Status
+        window.addEventListener('online', Fluxgram.network.updateStatusUI);
+        window.addEventListener('offline', Fluxgram.network.updateStatusUI);
+
+        // Monitor Firebase Connection Status using RTDB special path
+        const connectedRef = ref(rtdb, ".info/connected");
+        onValue(connectedRef, (snap) => {
+            State.isFirebaseConnected = snap.val() === true;
+            Fluxgram.network.updateStatusUI();
+        });
+    },
+    updateStatusUI: () => {
+        const bar = document.getElementById('connection-status-bar');
+        const text = document.getElementById('connection-status-text');
+        const icon = document.getElementById('connection-icon');
+        if(!bar || !text || !icon) return;
+
+        if (!navigator.onLine) {
+            // Case 2: Waiting for network
+            bar.classList.remove('hidden');
+            text.innerText = "Waiting for network...";
+            icon.className = "fas fa-wifi status-icon"; // Static icon
+        } else if (!State.isFirebaseConnected) {
+             // Case 3: Connecting (Slow net)
+            bar.classList.remove('hidden');
+            text.innerText = "Connecting...";
+            icon.className = "fas fa-circle-notch fa-spin status-icon"; // Spinning icon
+        } else if (State.isInitialLoad) {
+             // Case 1: Updating on first load
+            bar.classList.remove('hidden');
+            text.innerText = "Updating...";
+            icon.className = "fas fa-sync-alt fa-spin status-icon"; // Spinning icon
+        } else {
+            // Case 4: Connected & Loaded - Hide Bar
+            bar.classList.add('hidden');
+        }
+    }
+};
 
 const formatTime = (ts) => {
     if (!ts) return 'Just now';
@@ -174,7 +223,9 @@ function updatePresence(isOnline) {
 window.addEventListener('beforeunload', () => updatePresence(false));
 document.addEventListener('visibilitychange', () => updatePresence(document.visibilityState === 'visible'));
 
-// 🔥 SPLASH SCREEN FIX IS HERE 🔥
+// Initialize Network Monitoring
+Fluxgram.network.init();
+
 onAuthStateChanged(auth, async (user) => {
     const path = window.location.pathname.toLowerCase();
     
@@ -201,7 +252,6 @@ onAuthStateChanged(auth, async (user) => {
         if (path.includes('dashboard') || path.includes('chat')) { window.location.replace('index.html'); }
     }
     
-    // Hide Splash screen perfectly after Auth check completes!
     const splash = document.getElementById('splash-screen');
     if(splash) {
         splash.style.opacity = '0';
@@ -411,9 +461,17 @@ window.Fluxgram.dash = {
         const list = document.getElementById('chat-list');
         if(!list) return;
 
+        // 🔥 Make sure UI shows "Updating..." initially 🔥
+        State.isInitialLoad = true;
+        Fluxgram.network.updateStatusUI();
+
         const q = query(collection(db, "chats"), where("members", "array-contains", State.currentUser.uid));
         
         State.unsubChats = onSnapshot(q, async (snapshot) => {
+            // 🔥 Data received, turn off "Updating..." 🔥
+            State.isInitialLoad = false;
+            Fluxgram.network.updateStatusUI();
+
             list.innerHTML = '';
             if(snapshot.empty) { list.innerHTML = `<div style="padding:30px; text-align:center; color:var(--text-muted);">No chats yet.</div>`; return; }
 
