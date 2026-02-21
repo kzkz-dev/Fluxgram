@@ -185,8 +185,8 @@ document.addEventListener('visibilitychange', () => updatePresence(document.visi
 
 onAuthStateChanged(auth, async (user) => {
     const path = window.location.pathname.toLowerCase();
-    UI.loader(false);
     
+    // Auto-redirect logic based on auth state
     if (user) {
         State.currentUser = user;
         onSnapshot(doc(db, "users", user.uid), (d) => { if(d.exists()) State.userData = d.data(); });
@@ -194,18 +194,22 @@ onAuthStateChanged(auth, async (user) => {
         const deepLinkUsername = UI.getParam('link');
         if(deepLinkUsername && !path.includes('chat')) { window.location.replace(`chat.html?link=${deepLinkUsername}`); return; }
 
+        if (path.includes('index') || path === '/' || path.endsWith('/')) {
+             window.location.replace('dashboard.html'); 
+             return;
+        }
+
         if (path.includes('dashboard')) { 
             window.Fluxgram.dash.loadChats(); 
         } else if (path.includes('chat')) { 
             window.Fluxgram.chat.init(); 
             window.Fluxgram.call.listenForCalls(); 
-        } else { 
-            window.location.replace('dashboard.html'); 
         }
     } else {
         State.currentUser = null;
         if (path.includes('dashboard') || path.includes('chat')) { window.location.replace('index.html'); }
     }
+    UI.loader(false);
 });
 
 // ==========================================
@@ -229,6 +233,7 @@ window.Fluxgram.profile = {
             document.getElementById('edit-user-name').value = State.userData.name || '';
             document.getElementById('edit-user-username').value = State.userData.username || '';
             document.getElementById('edit-user-bio').value = State.userData.bio || '';
+            
             document.getElementById('my-profile-view-state').style.display = 'none';
             document.getElementById('my-profile-edit-state').style.display = 'flex';
         } else {
@@ -262,8 +267,13 @@ window.Fluxgram.profile = {
         try {
             if(!(await Utils.isUsernameUnique(u, State.userData.username))) throw new Error("This @username is already taken!");
             await setDoc(doc(db, "users", State.currentUser.uid), { name: n, username: u, searchKey: u.toLowerCase(), bio: b }, { merge: true });
-            window.Fluxgram.profile.toggleEditState(false);
+            
+            // Go back to view mode and refresh data
+            State.userData.name = n;
+            State.userData.username = u;
+            State.userData.bio = b;
             window.Fluxgram.profile.openMyProfile(); 
+            
             UI.toast("Info updated successfully!");
         } catch(e) { UI.toast(e.message, "error"); } finally { UI.loader(false); }
     },
@@ -554,7 +564,6 @@ window.Fluxgram.chat = {
     // DELETE MESSAGE
     showDeleteMenu: async (msgId, senderId) => {
         const isMe = senderId === State.currentUser.uid;
-        // Group admins can delete any message, users can delete their own or local copy
         const isAdmin = State.activeChatData && State.activeChatData.admin === State.currentUser.uid;
         
         let promptText = "Delete this message for me?";
@@ -686,7 +695,9 @@ window.Fluxgram.chat = {
 // ==========================================
 let pc = null, localStream = null;
 const servers = { 
-    iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }] 
+    iceServers: [
+        { urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }
+    ] 
 };
 
 window.Fluxgram.call = {
@@ -710,7 +721,7 @@ window.Fluxgram.call = {
             // Set Initial Video State based on button clicked
             const videoTrack = localStream.getVideoTracks()[0];
             videoTrack.enabled = (type === 'video');
-            document.getElementById('call-video-toggle').innerHTML = videoTrack.enabled ? '<i class="fas fa-video"></i><br><span style="font-size:0.7rem;">Video</span>' : '<i class="fas fa-video-slash"></i><br><span style="font-size:0.7rem;">Video</span>';
+            document.getElementById('call-video-toggle').innerHTML = videoTrack.enabled ? '<i class="fas fa-video"></i><br><span style="font-size:0.7rem;">Video</span>' : '<i class="fas fa-video-slash" style="color:var(--danger);"></i><br><span style="font-size:0.7rem;">Video</span>';
 
             pc = new RTCPeerConnection(servers); 
             localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
@@ -768,7 +779,7 @@ window.Fluxgram.call = {
             
             const videoTrack = localStream.getVideoTracks()[0];
             videoTrack.enabled = (callData.type === 'video');
-            document.getElementById('call-video-toggle').innerHTML = videoTrack.enabled ? '<i class="fas fa-video"></i><br><span style="font-size:0.7rem;">Video</span>' : '<i class="fas fa-video-slash"></i><br><span style="font-size:0.7rem;">Video</span>';
+            document.getElementById('call-video-toggle').innerHTML = videoTrack.enabled ? '<i class="fas fa-video"></i><br><span style="font-size:0.7rem;">Video</span>' : '<i class="fas fa-video-slash" style="color:var(--danger);"></i><br><span style="font-size:0.7rem;">Video</span>';
 
             pc = new RTCPeerConnection(servers); 
             localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
@@ -802,7 +813,7 @@ window.Fluxgram.call = {
         const callScreen = document.getElementById('call-screen'); 
         if(callScreen) callScreen.classList.add('hidden'); 
         
-        // Write Call Log to Chat
+        // Write Call Log to Chat History
         if(writeHistory && State.activeChatId) {
             let durationText = "Call Declined";
             let callStatus = "missed";
@@ -836,6 +847,7 @@ window.Fluxgram.call = {
         } 
     },
     toggleSpeaker: () => {
+        // Since pure web cannot toggle hardware speaker easily across all devices
         UI.toast("Speaker toggle available in native app.", "success");
     }
 };
