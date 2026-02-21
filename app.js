@@ -1,5 +1,5 @@
 // ============================================================================
-// app.js - Fluxgram Ultimate Engine (Fixed Call Video Box & Buttons)
+// app.js - Fluxgram Ultimate Engine (Added Telegram Voice UI)
 // ============================================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateEmail, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -19,13 +19,15 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 window.Fluxgram = {
-    // 🔥 callType added to state 🔥
     state: { currentUser: null, userData: null, activeChatId: null, activeChatUser: null, activeChatData: null, unsubMessages: null, unsubChats: null, callDocId: null, startTime: null, selectedMsgId: null, isInitialLoad: true, replyingTo: null, callRole: null, callType: null },
     ui: {}, auth: {}, dash: {}, chat: {}, call: {}, utils: {}, profile: {}, network: {}
 };
 
 const State = window.Fluxgram.state;
 window._localMessages = {};
+
+// Voice State Tracker
+window._voiceState = { recorder: null, chunks: [], isCancelled: false, timerInterval: null, startTime: 0, startX: 0 };
 
 window.Fluxgram.network = {
     init: () => {
@@ -555,25 +557,69 @@ window.Fluxgram.chat = {
         } catch(err) { UI.toast("Image send failed", "error"); UI.loader(false); }
     },
 
-    startVoice: async () => {
+    // 🔥 TELEGRAM STYLE VOICE RECORDING LOGIC 🔥
+    startVoice: async (e) => {
+        if(e) e.preventDefault();
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            window._voiceRecorder = new MediaRecorder(stream);
-            window._voiceChunks = [];
-            window._voiceRecorder.ondataavailable = e => window._voiceChunks.push(e.data);
-            window._voiceRecorder.onstop = async () => {
-                const audioBlob = new Blob(window._voiceChunks, { type: 'audio/webm' });
+            window._voiceState = { recorder: new MediaRecorder(stream), chunks: [], isCancelled: false, startTime: Date.now(), startX: 0 };
+            
+            if(e && e.touches && e.touches.length > 0) window._voiceState.startX = e.touches[0].clientX;
+            
+            window._voiceState.recorder.ondataavailable = ev => window._voiceState.chunks.push(ev.data);
+            window._voiceState.recorder.onstop = async () => {
+                stream.getTracks().forEach(track => track.stop()); // Stop mic
+                if(window._voiceState.isCancelled) return; 
+                
+                const audioBlob = new Blob(window._voiceState.chunks, { type: 'audio/webm' });
                 const reader = new FileReader(); reader.readAsDataURL(audioBlob);
                 reader.onloadend = async () => {
                     const base64Audio = reader.result;
-                    await addDoc(collection(db, `chats/${State.activeChatId}/messages`), { audio: base64Audio, senderId: State.currentUser.uid, timestamp: serverTimestamp() });
+                    let msgData = { audio: base64Audio, senderId: State.currentUser.uid, timestamp: serverTimestamp(), status: 'sent' };
+                    if(State.replyingTo) { msgData.replyTo = State.replyingTo; window.Fluxgram.chat.cancelReply(); }
+                    await addDoc(collection(db, `chats/${State.activeChatId}/messages`), msgData);
                     await setDoc(doc(db, "chats", State.activeChatId), { lastMessage: '🎤 Voice Message', lastSender: State.currentUser.uid, updatedAt: serverTimestamp() }, { merge: true });
                 };
             };
-            window._voiceRecorder.start(); document.getElementById('btn-record-voice').classList.add('recording');
-        } catch (err) { UI.toast("Microphone access denied! Check browser permissions.", "error"); }
+            
+            window._voiceState.recorder.start();
+            document.getElementById('btn-record-voice').classList.add('recording');
+            document.getElementById('recording-overlay').classList.remove('hidden');
+            
+            window._voiceState.timerInterval = setInterval(() => {
+                const diff = Date.now() - window._voiceState.startTime;
+                const secs = Math.floor(diff / 1000);
+                const ms = Math.floor((diff % 1000) / 100);
+                const m = Math.floor(secs / 60);
+                const s = secs % 60;
+                document.getElementById('rec-timer').innerText = `${m}:${s.toString().padStart(2, '0')},${ms}`;
+            }, 100);
+
+        } catch (err) { UI.toast("Microphone access denied.", "error"); }
     },
-    stopVoice: () => { if(window._voiceRecorder && window._voiceRecorder.state !== "inactive") { window._voiceRecorder.stop(); document.getElementById('btn-record-voice').classList.remove('recording'); } },
+    
+    slideVoice: (e) => {
+        if(!window._voiceState || !window._voiceState.recorder || window._voiceState.recorder.state === "inactive") return;
+        if(e && e.touches && e.touches.length > 0) {
+            const currentX = e.touches[0].clientX;
+            if(window._voiceState.startX - currentX > 50) { // Slided left by 50px
+                window._voiceState.isCancelled = true;
+                Fluxgram.chat.stopVoice();
+                UI.toast("Voice message cancelled", "error");
+            }
+        }
+    },
+    
+    stopVoice: (e) => {
+        if(e && e.type !== 'mouseleave') e.preventDefault();
+        if(window._voiceState && window._voiceState.recorder && window._voiceState.recorder.state !== "inactive") {
+            window._voiceState.recorder.stop();
+        }
+        document.getElementById('btn-record-voice').classList.remove('recording');
+        document.getElementById('recording-overlay').classList.add('hidden');
+        clearInterval(window._voiceState?.timerInterval);
+    },
+
     toggleEmoji: () => { document.getElementById('emoji-panel').classList.toggle('hidden'); },
     addEmoji: (emoji) => {
         const input = document.getElementById('msg-input'); input.value += emoji;
@@ -617,12 +663,11 @@ window.Fluxgram.chat = {
 
 const servers = { iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }] };
 
-// 🔥 FIXED CALL CAMERA & VIDEO PREVIEW LOGIC 🔥
 window.Fluxgram.call = {
     startCall: async (type) => {
         if(!State.activeChatUser) return;
         State.callRole = 'caller';
-        State.callType = type; // Keep track of audio or video
+        State.callType = type; 
         
         const callDoc = doc(collection(db, "calls")); State.callDocId = callDoc.id;
         const callScreen = document.getElementById('call-screen'); if(!callScreen) return; 
@@ -632,12 +677,9 @@ window.Fluxgram.call = {
         document.getElementById('callStatus').innerText = "Calling..."; 
         document.getElementById('call-controls-active').classList.remove('hidden'); 
         document.getElementById('call-controls-incoming').classList.add('hidden');
-        
-        // Hide local video by default while calling
         document.getElementById('localVideo').classList.add('hidden'); 
 
         try {
-            // 🔥 ONLY REQUEST VIDEO IF IT IS A VIDEO CALL 🔥
             window.localStream = await navigator.mediaDevices.getUserMedia({ video: (type === 'video'), audio: true }); 
             
             if (type === 'video') {
@@ -653,7 +695,6 @@ window.Fluxgram.call = {
             window.pc.ontrack = (event) => { 
                 document.getElementById('remoteVideo').srcObject = event.streams[0]; 
                 document.getElementById('callStatus').innerText = "Connected"; 
-                // Only show local video AFTER connection if it's a video call
                 if (State.callType === 'video') document.getElementById('localVideo').classList.remove('hidden');
             };
             
@@ -678,7 +719,7 @@ window.Fluxgram.call = {
                     State.callRole = 'receiver';
                     const callData = change.doc.data(); 
                     State.callDocId = change.doc.id;
-                    State.callType = callData.type; // Set type for receiver
+                    State.callType = callData.type; 
 
                     const callerDoc = await getDoc(doc(db, "users", callData.callerId));
                     callScreen.classList.remove('hidden'); 
@@ -686,7 +727,7 @@ window.Fluxgram.call = {
                     document.getElementById('callStatus').innerText = `Incoming ${callData.type} Call...`; 
                     document.getElementById('call-controls-active').classList.add('hidden'); 
                     document.getElementById('call-controls-incoming').classList.remove('hidden');
-                    document.getElementById('localVideo').classList.add('hidden'); // Safety hide
+                    document.getElementById('localVideo').classList.add('hidden');
                 }
             });
         });
@@ -705,7 +746,7 @@ window.Fluxgram.call = {
             
             if (State.callType === 'video') {
                 document.getElementById('localVideo').srcObject = window.localStream;
-                document.getElementById('localVideo').classList.remove('hidden'); // Receiver sees themselves immediately
+                document.getElementById('localVideo').classList.remove('hidden'); 
                 document.getElementById('call-video-toggle').innerHTML = '<i class="fas fa-video"></i>';
             } else {
                 document.getElementById('call-video-toggle').innerHTML = '<i class="fas fa-video-slash" style="color:var(--danger);"></i>';
@@ -738,7 +779,7 @@ window.Fluxgram.call = {
         
         document.getElementById('remoteVideo').srcObject = null; 
         document.getElementById('localVideo').srcObject = null;
-        document.getElementById('localVideo').classList.add('hidden'); // hide camera box
+        document.getElementById('localVideo').classList.add('hidden'); 
         
         const callScreen = document.getElementById('call-screen'); if(callScreen) callScreen.classList.add('hidden'); 
         
