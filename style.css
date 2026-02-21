@@ -19,15 +19,12 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
-/* 🔥 KEYBOARD PUSH FIX: Removed position fixed from body 🔥 */
+/* 🔥 FIXED: Screen perfectly bolted to the viewport 🔥 */
 html, body {
-    width: 100vw; 
-    height: 100vh; 
-    height: 100dvh; /* dynamic viewport height */
-    background: var(--bg-base); 
-    color: var(--text-main); 
-    font-family: 'Outfit', 'Roboto', sans-serif; 
-    overflow: hidden; 
+    position: fixed; 
+    top: 0; left: 0; right: 0; bottom: 0;
+    width: 100%; height: 100%;
+    background: var(--bg-base); color: var(--text-main); font-family: 'Outfit', 'Roboto', sans-serif; overflow: hidden; 
 }
 
 a { text-decoration: none; color: inherit; }
@@ -43,9 +40,9 @@ button, input, textarea { font-family: inherit; outline: none; border: none; }
    2. LAYOUT & HEADER
    ========================================== */
 .app-container {
-    display: flex; flex-direction: column; height: 100%; width: 100%; max-width: 600px;
-    margin: 0 auto; background: var(--bg-base); position: relative; box-shadow: 0 0 20px rgba(0,0,0,0.5); 
-    overflow: hidden; /* Ensures flex works properly */
+    position: absolute; inset: 0; /* Ensures it never overflows */
+    display: flex; flex-direction: column; width: 100%; max-width: 600px;
+    margin: 0 auto; background: var(--bg-base); box-shadow: 0 0 20px rgba(0,0,0,0.5); overflow: hidden;
 }
 
 .header {
@@ -70,21 +67,9 @@ button, input, textarea { font-family: inherit; outline: none; border: none; }
     text-transform: uppercase; flex-shrink: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
 
-/* ==========================================
-   🔥 NEW: TELEGRAM-STYLE CONNECTION BAR 🔥
-   ========================================== */
 .connection-bar {
-    background: var(--connection-bg);
-    color: var(--text-muted);
-    font-size: 0.85rem;
-    padding: 8px;
-    text-align: center;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    border-bottom: 1px solid var(--divider);
-    transition: all 0.3s ease;
+    background: var(--connection-bg); color: var(--text-muted); font-size: 0.85rem; padding: 8px;
+    text-align: center; display: flex; align-items: center; justify-content: center; gap: 8px; border-bottom: 1px solid var(--divider); transition: all 0.3s ease; flex-shrink: 0;
 }
 .connection-bar i { font-size: 0.8rem; }
 
@@ -100,12 +85,11 @@ button, input, textarea { font-family: inherit; outline: none; border: none; }
 .auth-btn:active { transform: scale(0.95); }
 .auth-link { text-align: center; color: var(--accent); margin-top: 15px; font-size: 0.9rem; cursor: pointer; transition: 0.2s; }
 
-.search-bar { padding: 10px 15px; background: var(--bg-surface); border-bottom: 1px solid var(--divider); z-index: 5; }
+.search-bar { padding: 10px 15px; background: var(--bg-surface); border-bottom: 1px solid var(--divider); z-index: 5; flex-shrink: 0; }
 .search-input-wrap { background: var(--bg-base); border-radius: 20px; display: flex; align-items: center; padding: 8px 15px; }
 .search-input-wrap input { flex: 1; background: transparent; color: var(--text-main); font-size: 0.95rem; margin-left: 10px; }
 
 .scroll-area { flex: 1; overflow-y: auto; background: var(--bg-base); position: relative; min-height: 0; }
-
 .chat-item { display: flex; align-items: center; padding: 12px 15px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.02); transition: all 0.2s ease; }
 .chat-item:hover { background: var(--bg-hover); }
 .chat-item:active { background: rgba(255,255,255,0.05); transform: scale(0.99); }
@@ -117,7 +101,6 @@ button, input, textarea { font-family: inherit; outline: none; border: none; }
 .c-msg { font-size: 0.9rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; padding-right: 10px; }
 .unread-badge { background: var(--primary); color: white; font-size: 0.75rem; font-weight: bold; padding: 2px 7px; border-radius: 10px; box-shadow: 0 2px 5px rgba(255,0,80,0.4); }
 
-/* Skeleton Loader Animation */
 .skeleton-chat { display: flex; align-items: center; padding: 12px 15px; border-bottom: 1px solid rgba(255,255,255,0.02); }
 .skeleton-avatar { width: 45px; height: 45px; border-radius: 50%; background: var(--bg-hover); animation: shimmer 1.5s infinite linear; flex-shrink: 0; }
 .skeleton-info { flex: 1; margin-left: 15px; display: flex; flex-direction: column; gap: 8px; }
@@ -149,7 +132,7 @@ button, input, textarea { font-family: inherit; outline: none; border: none; }
 .msg-meta { font-size: 0.7rem; float: right; margin: 5px 0 0 10px; display: flex; align-items: center; gap: 4px; opacity: 0.7; }
 .typing-indicator { font-size: 0.85rem; color: var(--accent); padding: 5px 15px; font-style: italic; background: var(--bg-base); }
 
-/* Inputs */
+/* 🔥 Input Area Fixed Flex Shrink 🔥 */
 .input-area { background: var(--bg-surface); padding: 10px 15px; display: flex; align-items: flex-end; gap: 10px; border-top: 1px solid var(--divider); flex-shrink: 0; z-index: 10; }
 .input-wrapper { flex: 1; background: var(--bg-base); border-radius: 20px; padding: 10px 15px; display: flex; align-items: center; border: 1px solid transparent; transition: 0.3s; }
 .input-wrapper:focus-within { border-color: rgba(255,255,255,0.1); }
@@ -216,38 +199,18 @@ video::-webkit-media-controls, video::-webkit-media-controls-start-playback-butt
 .toast.success { border-left-color: var(--success); }
 
 @keyframes slideDown { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 .smooth-fade { transition: opacity 0.3s ease, transform 0.3s ease; }
 .recording { color: var(--danger) !important; animation: pulse 1s infinite; }
 @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
 
 /* ==========================================
-   🔥 NEW: MESSAGE REPLY & BLUE TICKS 🔥
+   7. MESSAGE REPLY & BLUE TICKS
    ========================================== */
 .msg-ticks { font-size: 0.75rem; margin-left: 6px; color: #7f91a4; display: inline-flex; gap: 2px; }
-.msg-ticks.read { color: #00a8ff; } /* Blue Tick Color */
+.msg-ticks.read { color: #00a8ff; }
 
-.replied-msg-box {
-    background: rgba(0, 0, 0, 0.2);
-    border-left: 3px solid var(--accent);
-    padding: 6px 10px;
-    border-radius: 4px;
-    margin-bottom: 6px;
-    font-size: 0.85rem;
-    cursor: pointer;
-}
+.replied-msg-box { background: rgba(0, 0, 0, 0.2); border-left: 3px solid var(--accent); padding: 6px 10px; border-radius: 4px; margin-bottom: 6px; font-size: 0.85rem; cursor: pointer; }
 .replied-name { color: var(--accent); font-weight: bold; margin-bottom: 2px; font-size: 0.75rem; }
 .replied-text { color: rgba(255,255,255,0.8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
-
-.reply-preview-bar {
-    background: var(--bg-hover);
-    padding: 10px 15px;
-    border-left: 4px solid var(--accent);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-radius: 12px 12px 0 0;
-    margin-bottom: -5px; /* Pull down slightly into input area */
-    position: relative;
-    z-index: 5;
-    animation: slideUp 0.2s ease-out;
-}
+.reply-preview-bar { background: var(--bg-hover); padding: 10px 15px; border-left: 4px solid var(--accent); display: flex; align-items: center; justify-content: space-between; border-radius: 12px 12px 0 0; margin-bottom: -5px; position: relative; z-index: 5; animation: slideUp 0.2s ease-out; flex-shrink: 0; }
