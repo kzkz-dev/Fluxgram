@@ -1,5 +1,5 @@
 // ============================================================================
-// app.js - Fluxgram Ultimate Engine (Fixed Connection & Profile + Reply/Ticks)
+// app.js - Fluxgram Ultimate Engine (Fixed Call Screen & Keyboard Auto-Scroll)
 // ============================================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateEmail, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -26,7 +26,6 @@ window.Fluxgram = {
 const State = window.Fluxgram.state;
 window._localMessages = {};
 
-// 🔥 FIXED: SIMPLIFIED NETWORK CHECKER (No Realtime DB needed) 🔥
 window.Fluxgram.network = {
     init: () => {
         window.addEventListener('online', Fluxgram.network.updateStatusUI);
@@ -38,15 +37,9 @@ window.Fluxgram.network = {
         const icon = document.getElementById('connection-icon');
         if(!bar || !text || !icon) return;
 
-        if (!navigator.onLine) { 
-            bar.classList.remove('hidden'); text.innerText = "Waiting for network..."; icon.className = "fas fa-wifi status-icon"; 
-        } 
-        else if (State.isInitialLoad) { 
-            bar.classList.remove('hidden'); text.innerText = "Connecting..."; icon.className = "fas fa-sync-alt fa-spin status-icon"; 
-        } 
-        else { 
-            bar.classList.add('hidden'); 
-        }
+        if (!navigator.onLine) { bar.classList.remove('hidden'); text.innerText = "Waiting for network..."; icon.className = "fas fa-wifi status-icon"; } 
+        else if (State.isInitialLoad) { bar.classList.remove('hidden'); text.innerText = "Connecting..."; icon.className = "fas fa-sync-alt fa-spin status-icon"; } 
+        else { bar.classList.add('hidden'); }
     }
 };
 
@@ -168,7 +161,6 @@ onAuthStateChanged(auth, async (user) => {
     UI.loader(false);
 });
 
-// 🔥 RESTORED PROFILE LOGIC 🔥
 window.Fluxgram.profile = {
     openMyProfile: () => {
         if(!State.userData) return;
@@ -177,17 +169,14 @@ window.Fluxgram.profile = {
         document.getElementById('my-display-email').innerText = State.userData.email || 'Not set';
         document.getElementById('my-display-bio').innerText = State.userData.bio || 'Available on Fluxgram';
         document.getElementById('my-display-username').innerText = `@${State.userData.username}`;
-        
         document.getElementById('my-profile-edit-state').classList.add('hidden');
         document.getElementById('my-profile-view-state').classList.remove('hidden');
         document.getElementById('my-profile-view-state').style.display = 'flex';
-        
         document.getElementById('my-profile-modal').classList.remove('hidden');
     },
     toggleEditState: (showEdit) => {
         const viewState = document.getElementById('my-profile-view-state');
         const editState = document.getElementById('my-profile-edit-state');
-        
         if(showEdit) {
             document.getElementById('edit-user-name').value = State.userData.name || '';
             document.getElementById('edit-user-username').value = State.userData.username || '';
@@ -215,7 +204,6 @@ window.Fluxgram.profile = {
         let u = document.getElementById('edit-user-username').value.trim().replace('@', '');
         const b = document.getElementById('edit-user-bio').value.trim();
         if(!u || u.length < 6) return UI.toast("Username must be at least 6 chars", "error");
-        
         UI.loader(true);
         try {
             if(!(await Utils.isUsernameUnique(u, State.userData.username))) throw new Error("This @username is already taken!");
@@ -269,10 +257,8 @@ window.Fluxgram.profile = {
         let u = document.getElementById('edit-chat-username').value.trim().replace('@', '');
         const desc = document.getElementById('edit-chat-desc').value.trim();
         const previewImg = document.getElementById('chat-avatar-preview');
-
         if(!n) return UI.toast("Name is required", "error");
         if(u && u.length < 6) return UI.toast("Username must be at least 6 chars", "error");
-
         UI.loader(true);
         try {
             if(u && !(await Utils.isUsernameUnique(u, State.activeChatData.username))) throw new Error("This @username is already taken!");
@@ -354,7 +340,6 @@ window.Fluxgram.dash = {
         const q = query(collection(db, "chats"), where("members", "array-contains", State.currentUser.uid));
         
         State.unsubChats = onSnapshot(q, async (snapshot) => {
-            // 🔥 HIDE CONNECTING BAR WHEN DATA LOADED 🔥
             State.isInitialLoad = false; Fluxgram.network.updateStatusUI();
             
             list.innerHTML = '';
@@ -420,8 +405,15 @@ window.Fluxgram.chat = {
                 });
             }
 
+            // 🔥 KEYBOARD SCROLL FIX IS HERE 🔥
             const msgInput = document.getElementById('msg-input');
             if(msgInput) {
+                msgInput.addEventListener('focus', () => {
+                    setTimeout(() => {
+                        const container = document.getElementById('messages-container');
+                        if(container) container.scrollTop = container.scrollHeight;
+                    }, 300);
+                });
                 msgInput.addEventListener('input', () => { 
                     UI.autoResize(msgInput); 
                     if(msgInput.value.trim().length > 0) { document.getElementById('btn-send-text').classList.remove('hidden'); document.getElementById('btn-record-voice').classList.add('hidden'); } 
@@ -441,7 +433,6 @@ window.Fluxgram.chat = {
             window._localMessages = {}; 
             container.innerHTML = '';
             let lastDateStr = '';
-            
             let batch = writeBatch(db); 
             let hasUnreadMessages = false;
 
@@ -702,7 +693,6 @@ window.Fluxgram.call = {
     toggleSpeaker: () => { UI.toast("Speaker toggle available in native app.", "success"); }
 };
 
-// Button Listener from chat.html for Reply
 document.addEventListener('DOMContentLoaded', () => {
     const btnReply = document.getElementById('btn-reply-msg');
     if(btnReply) btnReply.addEventListener('click', () => { Fluxgram.chat.initReply(); });
