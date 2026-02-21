@@ -82,18 +82,18 @@
                 
                 <div style="display:flex; justify-content:center; gap:12px; margin-top:25px; padding:0 10px;">
                     <div class="my-action-btn" onclick="document.getElementById('instant-avatar-input').click()">
-                        <i class="fas fa-camera"></i>
+                        <i class="fas fa-camera" style="color:var(--primary);"></i>
                         <span>Set Photo</span>
                     </div>
                     <input type="file" id="instant-avatar-input" accept="image/*" class="hidden" onchange="Fluxgram.profile.instantAvatarUpload(event)">
                     
                     <div class="my-action-btn" onclick="Fluxgram.profile.toggleEditState(true)">
-                        <i class="fas fa-edit" style="color:#00a8ff;"></i>
+                        <i class="fas fa-edit" style="color:var(--primary);"></i>
                         <span>Edit Info</span>
                     </div>
                     
                     <div class="my-action-btn" onclick="document.getElementById('email-change-modal').classList.remove('hidden')">
-                        <i class="fas fa-cog" style="color:#ff4757;"></i>
+                        <i class="fas fa-cog" style="color:var(--primary);"></i>
                         <span>Settings</span>
                     </div>
                 </div>
@@ -152,6 +152,6 @@
         </div>
     </div>
 
-    <script type="module" src="app.js?v=20"></script>
+    <script type="module" src="app.js?v=25"></script>
 </body>
 </html>
