@@ -455,3 +455,17 @@ button, input, textarea { font-family: inherit; outline: none; border: none; }
 }
 .call-btn-circle.danger { background: var(--danger); }
 .call-btn-circle:active { transform: scale(0.9); }
+
+/* Video Call Fixes */
+video {
+    background-color: #1a1a1a !important;
+    outline: none;
+    border: none;
+}
+/* Hide the massive play button injected by mobile browsers */
+video::-webkit-media-controls {
+    display: none !important;
+}
+video::-webkit-media-controls-start-playback-button {
+    display: none !important;
+}
