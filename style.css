@@ -214,3 +214,17 @@ video::-webkit-media-controls, video::-webkit-media-controls-start-playback-butt
 .replied-name { color: var(--accent); font-weight: bold; margin-bottom: 2px; font-size: 0.75rem; }
 .replied-text { color: rgba(255,255,255,0.8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
 .reply-preview-bar { background: var(--bg-hover); padding: 10px 15px; border-left: 4px solid var(--accent); display: flex; align-items: center; justify-content: space-between; border-radius: 12px 12px 0 0; margin-bottom: -5px; position: relative; z-index: 5; animation: slideUp 0.2s ease-out; flex-shrink: 0; }
+/* ==========================================
+   8. TELEGRAM VOICE RECORDING UI
+   ========================================== */
+@keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
+@keyframes slideLeftPulse { 0% { transform: translateX(0); opacity:0.7; } 50% { transform: translateX(-10px); opacity:1; } 100% { transform: translateX(0); opacity:0.7; } }
+
+.mic-btn { position: relative; z-index: 20; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); touch-action: none; }
+.mic-btn.recording {
+    background: #00a8ff !important; /* Telegram Blue */
+    color: white !important;
+    transform: scale(1.6) translateY(-10px); /* Lifts up and gets bigger */
+    box-shadow: 0 10px 20px rgba(0, 168, 255, 0.4);
+}
+
