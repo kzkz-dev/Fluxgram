@@ -239,3 +239,52 @@ video::-webkit-media-controls, video::-webkit-media-controls-start-playback-butt
     z-index: 5;
     animation: slideUp 0.2s ease-out;
 }
+/* ==========================================
+   1. VARIABLES & GLOBAL RESETS
+   ========================================== */
+:root {
+    --bg-base: #0e1621;
+    --bg-surface: #17212b;
+    --bg-hover: #202b36;
+    --primary: #ff0050;
+    --accent: #00f3ff;
+    --text-main: #ffffff;
+    --text-muted: #7f91a4;
+    --divider: #101921;
+    --msg-rx: #182533;
+    --msg-tx: #2b5278;
+    --danger: #ff3b30;
+    --success: #4caf50;
+    --connection-bg: #1f2936;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+/* 🔥 KEYBOARD PUSH FIX: Removed position fixed from body 🔥 */
+html, body {
+    width: 100vw; 
+    height: 100vh; 
+    height: 100dvh; /* dynamic viewport height */
+    background: var(--bg-base); 
+    color: var(--text-main); 
+    font-family: 'Outfit', 'Roboto', sans-serif; 
+    overflow: hidden; 
+}
+
+a { text-decoration: none; color: inherit; }
+button, input, textarea { font-family: inherit; outline: none; border: none; }
+.hidden { display: none !important; }
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+
+/* ==========================================
+   2. LAYOUT & HEADER
+   ========================================== */
+.app-container {
+    display: flex; flex-direction: column; height: 100%; width: 100%; max-width: 600px;
+    margin: 0 auto; background: var(--bg-base); position: relative; box-shadow: 0 0 20px rgba(0,0,0,0.5); 
+    overflow: hidden; /* Ensures flex works properly */
+}
