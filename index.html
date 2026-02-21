@@ -4,11 +4,31 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Fluxgram | Login</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1c242f">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3128/3128210.png">
+
     <link rel="stylesheet" href="style.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+    <style>
+        #splash-screen {
+            position: fixed; inset: 0; background: #1c242f; z-index: 99999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 0.5s ease-out, visibility 0.5s;
+        }
+        .splash-logo { font-size: 4.5rem; color: #FF4757; text-shadow: 0 0 20px rgba(255, 71, 87, 0.4); animation: pulse 1.2s infinite; }
+        .splash-text { font-family: 'Outfit', sans-serif; font-size: 2.2rem; color: white; margin-top: 15px; font-weight: 800; letter-spacing: 1px; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+    </style>
 </head>
 <body>
 
+    <div id="splash-screen">
+        <i class="fas fa-bolt splash-logo"></i>
+        <div class="splash-text">Fluxgram</div>
+    </div>
     <div id="toast-container"></div>
     <div id="global-loader" class="loader-overlay hidden"><div class="spinner"></div></div>
 
@@ -43,6 +63,20 @@
         </div>
     </div>
 
-    <script type="module" src="app.js"></script>
+    <script type="module" src="app.js?v=20"></script>
+
+    <script>
+        window.addEventListener('load', () => {
+            // Give Firebase 1.2 seconds to check if logged in. 
+            // If logged in, app.js will redirect. If not, splash fades out to show login.
+            setTimeout(() => {
+                const splash = document.getElementById('splash-screen');
+                if(splash) {
+                    splash.style.opacity = '0';
+                    setTimeout(() => splash.style.visibility = 'hidden', 500);
+                }
+            }, 1200); 
+        });
+    </script>
 </body>
 </html>
