@@ -1,5 +1,5 @@
 // ============================================================================
-// app.js - Fluxgram Ultimate Engine (Fixed Call Screen & Keyboard Auto-Scroll)
+// app.js - Fluxgram Ultimate Engine (Fixed Double Call Log & Chat Input Bug)
 // ============================================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateEmail, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -19,7 +19,8 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 window.Fluxgram = {
-    state: { currentUser: null, userData: null, activeChatId: null, activeChatUser: null, activeChatData: null, unsubMessages: null, unsubChats: null, callDocId: null, startTime: null, selectedMsgId: null, isInitialLoad: true, replyingTo: null },
+    // 🔥 NEW: callRole added to fix double call logging 🔥
+    state: { currentUser: null, userData: null, activeChatId: null, activeChatUser: null, activeChatData: null, unsubMessages: null, unsubChats: null, callDocId: null, startTime: null, selectedMsgId: null, isInitialLoad: true, replyingTo: null, callRole: null },
     ui: {}, auth: {}, dash: {}, chat: {}, call: {}, utils: {}, profile: {}, network: {}
 };
 
@@ -341,7 +342,6 @@ window.Fluxgram.dash = {
         
         State.unsubChats = onSnapshot(q, async (snapshot) => {
             State.isInitialLoad = false; Fluxgram.network.updateStatusUI();
-            
             list.innerHTML = '';
             if(snapshot.empty) { list.innerHTML = `<div style="padding:30px; text-align:center; color:var(--text-muted);">No chats yet.</div>`; return; }
 
@@ -405,15 +405,8 @@ window.Fluxgram.chat = {
                 });
             }
 
-            // 🔥 KEYBOARD SCROLL FIX IS HERE 🔥
             const msgInput = document.getElementById('msg-input');
             if(msgInput) {
-                msgInput.addEventListener('focus', () => {
-                    setTimeout(() => {
-                        const container = document.getElementById('messages-container');
-                        if(container) container.scrollTop = container.scrollHeight;
-                    }, 300);
-                });
                 msgInput.addEventListener('input', () => { 
                     UI.autoResize(msgInput); 
                     if(msgInput.value.trim().length > 0) { document.getElementById('btn-send-text').classList.remove('hidden'); document.getElementById('btn-record-voice').classList.add('hidden'); } 
@@ -621,27 +614,28 @@ window.Fluxgram.chat = {
     }
 };
 
-let pc = null, localStream = null;
 const servers = { iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }] };
 
+// 🔥 FIXED DOUBLE CALL LOG LOGIC 🔥
 window.Fluxgram.call = {
     startCall: async (type) => {
         if(!State.activeChatUser) return;
+        State.callRole = 'caller'; // Set role as caller
         const callDoc = doc(collection(db, "calls")); State.callDocId = callDoc.id;
         const callScreen = document.getElementById('call-screen'); if(!callScreen) return; 
         callScreen.classList.remove('hidden'); document.getElementById('callName').innerText = State.activeChatUser.name || State.activeChatUser.username; document.getElementById('callStatus').innerText = "Calling..."; 
         document.getElementById('call-controls-active').classList.remove('hidden'); document.getElementById('call-controls-incoming').classList.add('hidden');
         try {
-            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true }); document.getElementById('localVideo').srcObject = localStream;
-            const videoTrack = localStream.getVideoTracks()[0]; videoTrack.enabled = (type === 'video');
+            window.localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true }); document.getElementById('localVideo').srcObject = window.localStream;
+            const videoTrack = window.localStream.getVideoTracks()[0]; videoTrack.enabled = (type === 'video');
             document.getElementById('call-video-toggle').innerHTML = videoTrack.enabled ? '<i class="fas fa-video"></i><br><span style="font-size:0.7rem;">Video</span>' : '<i class="fas fa-video-slash" style="color:var(--danger);"></i><br><span style="font-size:0.7rem;">Video</span>';
-            pc = new RTCPeerConnection(servers); localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-            pc.ontrack = (event) => { document.getElementById('remoteVideo').srcObject = event.streams[0]; document.getElementById('callStatus').innerText = "Connected"; };
-            const offerCandidates = collection(callDoc, 'offerCandidates'); pc.onicecandidate = (event) => { if(event.candidate) addDoc(offerCandidates, event.candidate.toJSON()); };
-            const offerDescription = await pc.createOffer(); await pc.setLocalDescription(offerDescription);
+            window.pc = new RTCPeerConnection(servers); window.localStream.getTracks().forEach(track => window.pc.addTrack(track, window.localStream));
+            window.pc.ontrack = (event) => { document.getElementById('remoteVideo').srcObject = event.streams[0]; document.getElementById('callStatus').innerText = "Connected"; };
+            const offerCandidates = collection(callDoc, 'offerCandidates'); window.pc.onicecandidate = (event) => { if(event.candidate) addDoc(offerCandidates, event.candidate.toJSON()); };
+            const offerDescription = await window.pc.createOffer(); await window.pc.setLocalDescription(offerDescription);
             await setDoc(callDoc, { offer: { type: offerDescription.type, sdp: offerDescription.sdp }, callerId: State.currentUser.uid, receiverId: State.activeChatUser.uid, type: type, status: 'ringing' });
-            onSnapshot(callDoc, (snapshot) => { const data = snapshot.data(); if (!pc.currentRemoteDescription && data?.answer) { pc.setRemoteDescription(new RTCSessionDescription(data.answer)); State.startTime = Date.now(); } if(data?.status === 'ended') window.Fluxgram.call.endCallLocal(true); });
-            onSnapshot(collection(callDoc, 'answerCandidates'), (snapshot) => { snapshot.docChanges().forEach((change) => { if (change.type === 'added') pc.addIceCandidate(new RTCIceCandidate(change.doc.data())); }); });
+            onSnapshot(callDoc, (snapshot) => { const data = snapshot.data(); if (!window.pc.currentRemoteDescription && data?.answer) { window.pc.setRemoteDescription(new RTCSessionDescription(data.answer)); State.startTime = Date.now(); } if(data?.status === 'ended') window.Fluxgram.call.endCallLocal(true); });
+            onSnapshot(collection(callDoc, 'answerCandidates'), (snapshot) => { snapshot.docChanges().forEach((change) => { if (change.type === 'added') window.pc.addIceCandidate(new RTCIceCandidate(change.doc.data())); }); });
         } catch (err) { UI.toast("Camera/Mic access denied.", "error"); window.Fluxgram.call.endCallLocal(false); }
     },
     listenForCalls: () => {
@@ -649,6 +643,7 @@ window.Fluxgram.call = {
         onSnapshot(query(collection(db, "calls"), where("receiverId", "==", State.currentUser.uid), where("status", "==", "ringing")), (snapshot) => {
             snapshot.docChanges().forEach(async (change) => {
                 if(change.type === 'added') {
+                    State.callRole = 'receiver'; // Set role as receiver
                     const callData = change.doc.data(); State.callDocId = change.doc.id;
                     const callerDoc = await getDoc(doc(db, "users", callData.callerId));
                     callScreen.classList.remove('hidden'); document.getElementById('callName').innerText = callerDoc.exists() ? (callerDoc.data().name || callerDoc.data().username) : "Unknown"; document.getElementById('callStatus').innerText = `Incoming ${callData.type} Call...`; 
@@ -661,35 +656,41 @@ window.Fluxgram.call = {
         document.getElementById('call-controls-active').classList.remove('hidden'); document.getElementById('call-controls-incoming').classList.add('hidden'); document.getElementById('callStatus').innerText = "Connecting...";
         const callDocRef = doc(db, "calls", State.callDocId); const callData = (await getDoc(callDocRef)).data();
         try {
-            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true }); document.getElementById('localVideo').srcObject = localStream;
-            const videoTrack = localStream.getVideoTracks()[0]; videoTrack.enabled = (callData.type === 'video');
+            window.localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true }); document.getElementById('localVideo').srcObject = window.localStream;
+            const videoTrack = window.localStream.getVideoTracks()[0]; videoTrack.enabled = (callData.type === 'video');
             document.getElementById('call-video-toggle').innerHTML = videoTrack.enabled ? '<i class="fas fa-video"></i><br><span style="font-size:0.7rem;">Video</span>' : '<i class="fas fa-video-slash" style="color:var(--danger);"></i><br><span style="font-size:0.7rem;">Video</span>';
-            pc = new RTCPeerConnection(servers); localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-            pc.ontrack = (event) => { document.getElementById('remoteVideo').srcObject = event.streams[0]; document.getElementById('callStatus').innerText = "Connected"; };
-            const answerCandidates = collection(callDocRef, 'answerCandidates'); pc.onicecandidate = (event) => { if(event.candidate) addDoc(answerCandidates, event.candidate.toJSON()); };
-            await pc.setRemoteDescription(new RTCSessionDescription(callData.offer)); const answerDescription = await pc.createAnswer(); await pc.setLocalDescription(answerDescription);
+            window.pc = new RTCPeerConnection(servers); window.localStream.getTracks().forEach(track => window.pc.addTrack(track, window.localStream));
+            window.pc.ontrack = (event) => { document.getElementById('remoteVideo').srcObject = event.streams[0]; document.getElementById('callStatus').innerText = "Connected"; };
+            const answerCandidates = collection(callDocRef, 'answerCandidates'); window.pc.onicecandidate = (event) => { if(event.candidate) addDoc(answerCandidates, event.candidate.toJSON()); };
+            await window.pc.setRemoteDescription(new RTCSessionDescription(callData.offer)); const answerDescription = await window.pc.createAnswer(); await window.pc.setLocalDescription(answerDescription);
             await updateDoc(callDocRef, { answer: { type: answerDescription.type, sdp: answerDescription.sdp }, status: 'connected' }); State.startTime = Date.now();
-            onSnapshot(collection(callDocRef, 'offerCandidates'), (snapshot) => { snapshot.docChanges().forEach((change) => { if (change.type === 'added') pc.addIceCandidate(new RTCIceCandidate(change.doc.data())); }); });
+            onSnapshot(collection(callDocRef, 'offerCandidates'), (snapshot) => { snapshot.docChanges().forEach((change) => { if (change.type === 'added') window.pc.addIceCandidate(new RTCIceCandidate(change.doc.data())); }); });
             onSnapshot(callDocRef, (snap) => { if(snap.data()?.status === 'ended') window.Fluxgram.call.endCallLocal(true); });
         } catch (err) { UI.toast("Camera/Mic access denied.", "error"); window.Fluxgram.call.endCall(); }
     },
     endCall: async () => { if(State.callDocId) await updateDoc(doc(db, "calls", State.callDocId), { status: 'ended' }); window.Fluxgram.call.endCallLocal(true); },
+    
     endCallLocal: async (writeHistory = false) => {
-        if(pc) { pc.close(); pc = null; } if(localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+        if(window.pc) { window.pc.close(); window.pc = null; } 
+        if(window.localStream) { window.localStream.getTracks().forEach(t => t.stop()); window.localStream = null; }
         document.getElementById('remoteVideo').srcObject = null; document.getElementById('localVideo').srcObject = null;
+        
         const callScreen = document.getElementById('call-screen'); if(callScreen) callScreen.classList.add('hidden'); 
-        if(writeHistory && State.activeChatId) {
-            let durationText = "Call Declined"; let callStatus = "missed";
+        
+        // ONLY the caller writes the history to prevent double messages!
+        if(writeHistory && State.activeChatId && State.callRole === 'caller') {
+            let durationText = "Missed Call"; let callStatus = "missed";
             if(State.startTime) {
                 const totalSeconds = Math.floor((Date.now() - State.startTime) / 1000); const mins = Math.floor(totalSeconds / 60); const secs = totalSeconds % 60;
                 durationText = `Call ended (${mins}m ${secs}s)`; callStatus = "success";
             }
             await addDoc(collection(db, `chats/${State.activeChatId}/messages`), { type: 'call', text: durationText, status: callStatus, senderId: State.currentUser.uid, timestamp: serverTimestamp() });
         }
-        State.callDocId = null; State.startTime = null;
+        
+        State.callDocId = null; State.startTime = null; State.callRole = null;
     },
-    toggleMic: () => { if(!localStream) return; const audioTrack = localStream.getAudioTracks()[0]; audioTrack.enabled = !audioTrack.enabled; document.getElementById('mic-icon').className = audioTrack.enabled ? 'fas fa-microphone' : 'fas fa-microphone-slash'; document.getElementById('mic-icon').style.color = audioTrack.enabled ? 'white' : 'var(--danger)'; },
-    toggleVideo: () => { if(!localStream) return; const videoTrack = localStream.getVideoTracks()[0]; if(videoTrack) { videoTrack.enabled = !videoTrack.enabled; const btn = document.getElementById('call-video-toggle'); btn.innerHTML = videoTrack.enabled ? '<i class="fas fa-video"></i><br><span style="font-size:0.7rem;">Video</span>' : '<i class="fas fa-video-slash" style="color:var(--danger);"></i><br><span style="font-size:0.7rem;">Video</span>'; } },
+    toggleMic: () => { if(!window.localStream) return; const audioTrack = window.localStream.getAudioTracks()[0]; audioTrack.enabled = !audioTrack.enabled; document.getElementById('mic-icon').className = audioTrack.enabled ? 'fas fa-microphone' : 'fas fa-microphone-slash'; document.getElementById('mic-icon').style.color = audioTrack.enabled ? 'white' : 'var(--danger)'; },
+    toggleVideo: () => { if(!window.localStream) return; const videoTrack = window.localStream.getVideoTracks()[0]; if(videoTrack) { videoTrack.enabled = !videoTrack.enabled; const btn = document.getElementById('call-video-toggle'); btn.innerHTML = videoTrack.enabled ? '<i class="fas fa-video"></i><br><span style="font-size:0.7rem;">Video</span>' : '<i class="fas fa-video-slash" style="color:var(--danger);"></i><br><span style="font-size:0.7rem;">Video</span>'; } },
     toggleSpeaker: () => { UI.toast("Speaker toggle available in native app.", "success"); }
 };
 
