@@ -174,6 +174,7 @@ function updatePresence(isOnline) {
 window.addEventListener('beforeunload', () => updatePresence(false));
 document.addEventListener('visibilitychange', () => updatePresence(document.visibilityState === 'visible'));
 
+// 🔥 SPLASH SCREEN FIX IS HERE 🔥
 onAuthStateChanged(auth, async (user) => {
     const path = window.location.pathname.toLowerCase();
     
@@ -199,6 +200,14 @@ onAuthStateChanged(auth, async (user) => {
         State.currentUser = null;
         if (path.includes('dashboard') || path.includes('chat')) { window.location.replace('index.html'); }
     }
+    
+    // Hide Splash screen perfectly after Auth check completes!
+    const splash = document.getElementById('splash-screen');
+    if(splash) {
+        splash.style.opacity = '0';
+        setTimeout(() => { splash.style.visibility = 'hidden'; }, 500);
+    }
+    
     UI.loader(false);
 });
 
@@ -515,7 +524,6 @@ window.Fluxgram.chat = {
                 const msgId = docSnap.id;
                 const msg = docSnap.data();
                 
-                // 🔥 "Delete for me" Logic: Hide message if current user is in deletedFor array 🔥
                 if(msg.deletedFor && msg.deletedFor.includes(State.currentUser.uid)) {
                     return; 
                 }
@@ -551,7 +559,6 @@ window.Fluxgram.chat = {
         });
     },
 
-    // 🔥 NEW CUSTOM DELETE MENU LOGIC 🔥
     showDeleteMenu: (msgId, senderId) => {
         State.selectedMsgId = msgId;
         
