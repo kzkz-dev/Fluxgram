@@ -14,26 +14,38 @@
     --msg-tx: #2b5278;
     --danger: #ff3b30;
     --success: #4caf50;
-    --connection-bg: #1f2936; /* New variable for connection bar */
+    --connection-bg: #1f2936;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
+/* 🔥 KEYBOARD PUSH FIX: Removed position fixed from body 🔥 */
 html, body {
-    position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%;
-    background: var(--bg-base); color: var(--text-main); font-family: 'Outfit', 'Roboto', sans-serif; overflow: hidden; 
+    width: 100vw; 
+    height: 100vh; 
+    height: 100dvh; /* dynamic viewport height */
+    background: var(--bg-base); 
+    color: var(--text-main); 
+    font-family: 'Outfit', 'Roboto', sans-serif; 
+    overflow: hidden; 
 }
 
 a { text-decoration: none; color: inherit; }
 button, input, textarea { font-family: inherit; outline: none; border: none; }
 .hidden { display: none !important; }
 
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+
 /* ==========================================
    2. LAYOUT & HEADER
    ========================================== */
 .app-container {
     display: flex; flex-direction: column; height: 100%; width: 100%; max-width: 600px;
-    margin: 0 auto; background: var(--bg-base); position: relative; box-shadow: 0 0 20px rgba(0,0,0,0.5); overflow: hidden;
+    margin: 0 auto; background: var(--bg-base); position: relative; box-shadow: 0 0 20px rgba(0,0,0,0.5); 
+    overflow: hidden; /* Ensures flex works properly */
 }
 
 .header {
@@ -238,53 +250,4 @@ video::-webkit-media-controls, video::-webkit-media-controls-start-playback-butt
     position: relative;
     z-index: 5;
     animation: slideUp 0.2s ease-out;
-}
-/* ==========================================
-   1. VARIABLES & GLOBAL RESETS
-   ========================================== */
-:root {
-    --bg-base: #0e1621;
-    --bg-surface: #17212b;
-    --bg-hover: #202b36;
-    --primary: #ff0050;
-    --accent: #00f3ff;
-    --text-main: #ffffff;
-    --text-muted: #7f91a4;
-    --divider: #101921;
-    --msg-rx: #182533;
-    --msg-tx: #2b5278;
-    --danger: #ff3b30;
-    --success: #4caf50;
-    --connection-bg: #1f2936;
-}
-
-* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-
-/* 🔥 KEYBOARD PUSH FIX: Removed position fixed from body 🔥 */
-html, body {
-    width: 100vw; 
-    height: 100vh; 
-    height: 100dvh; /* dynamic viewport height */
-    background: var(--bg-base); 
-    color: var(--text-main); 
-    font-family: 'Outfit', 'Roboto', sans-serif; 
-    overflow: hidden; 
-}
-
-a { text-decoration: none; color: inherit; }
-button, input, textarea { font-family: inherit; outline: none; border: none; }
-.hidden { display: none !important; }
-
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 10px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
-
-/* ==========================================
-   2. LAYOUT & HEADER
-   ========================================== */
-.app-container {
-    display: flex; flex-direction: column; height: 100%; width: 100%; max-width: 600px;
-    margin: 0 auto; background: var(--bg-base); position: relative; box-shadow: 0 0 20px rgba(0,0,0,0.5); 
-    overflow: hidden; /* Ensures flex works properly */
 }
