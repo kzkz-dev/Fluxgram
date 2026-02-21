@@ -9,14 +9,16 @@
   "theme_color": "#1c242f",
   "icons": [
     {
-      "src": "./image-1.jpg",
+      "src": "./logo.png",
       "sizes": "192x192",
-      "type": "image/jpeg"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "./image-1.jpg",
+      "src": "./logo.png",
       "sizes": "512x512",
-      "type": "image/jpeg"
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }
