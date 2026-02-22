@@ -52,36 +52,40 @@
                 <button class="icon-btn" onclick="Fluxgram.chat.cancelReply()"><i class="fas fa-times"></i></button>
             </div>
 
-            <div class="input-area" id="input-area" style="position:relative; z-index:10;">
-                
-                <div id="recording-overlay" class="hidden" style="position: absolute; inset: 0; background: var(--bg-surface); z-index: 15; display: flex; align-items: center; justify-content: space-between; padding: 0 70px 0 20px; border-top: 1px solid var(--divider);">
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <div style="width:10px; height:10px; background:#ff3b30; border-radius:50%; animation: blink 1s infinite;"></div>
-                        <span id="rec-timer" style="color:white; font-weight:bold; font-size:1.1rem; font-variant-numeric: tabular-nums;">0:00,0</span>
-                    </div>
-                    <div style="color:var(--text-muted); font-size:0.95rem; animation: slideLeftPulse 1.5s infinite;">
-                        <i class="fas fa-chevron-left"></i> Slide to cancel
-                    </div>
-                </div>
-
-                <button class="icon-btn" onclick="Fluxgram.chat.toggleEmoji()"><i class="far fa-smile"></i></button>
-                <button class="icon-btn" onclick="document.getElementById('chat-file-input').click()"><i class="fas fa-paperclip"></i></button>
+            <div class="input-area" id="input-area" style="position:relative; z-index:10; overflow:hidden;">
+                <button class="icon-btn" id="btn-emoji" onclick="Fluxgram.chat.toggleEmoji()"><i class="far fa-smile"></i></button>
+                <button class="icon-btn" id="btn-attach" onclick="document.getElementById('chat-file-input').click()"><i class="fas fa-paperclip"></i></button>
                 <input type="file" id="chat-file-input" class="hidden" accept="image/*" onchange="Fluxgram.chat.sendImage(event)">
                 
-                <div class="input-wrapper">
+                <div class="input-wrapper" id="input-wrapper">
                     <textarea id="msg-input" class="msg-input" rows="1" placeholder="Message..."></textarea>
                 </div>
+                
                 <button class="icon-btn hidden" id="btn-send-text" onclick="Fluxgram.chat.send()"><i class="fas fa-paper-plane" style="color:var(--primary);"></i></button>
                 
-                <button class="icon-btn mic-btn" id="btn-record-voice" 
+                <button class="icon-btn" id="btn-record-voice" 
                     onmousedown="Fluxgram.chat.startVoice(event)" 
                     onmouseup="Fluxgram.chat.stopVoice(event)" 
-                    onmouseleave="Fluxgram.chat.stopVoice(event)"
+                    onmousemove="Fluxgram.chat.slideVoice(event)"
                     ontouchstart="Fluxgram.chat.startVoice(event)" 
-                    ontouchend="Fluxgram.chat.stopVoice(event)"
+                    ontouchend="Fluxgram.chat.stopVoice(event)" 
                     ontouchmove="Fluxgram.chat.slideVoice(event)">
                     <i class="fas fa-microphone"></i>
                 </button>
+
+                <div id="recording-ui" class="hidden" style="position:absolute; inset:0; background:var(--bg-surface); z-index:20; align-items:center; justify-content:space-between; padding:0 20px;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <div class="record-dot"></div>
+                        <span id="record-time" style="color:white; font-size:1.1rem; font-family:monospace;">0:00</span>
+                    </div>
+                    <div class="slide-cancel-text">
+                        <i class="fas fa-chevron-left"></i> Slide to cancel
+                    </div>
+                    <div style="width:40px; height:40px; background:var(--primary); border-radius:50%; display:flex; justify-content:center; align-items:center; color:white; font-size:1.2rem; transform:scale(1.2);">
+                        <i class="fas fa-microphone"></i>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
