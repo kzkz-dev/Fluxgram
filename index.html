@@ -5,66 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Fluxgram | Login</title>
 
-  <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#111827">
-  <link rel="apple-touch-icon" href="logo.png">
   <link rel="stylesheet" href="style.css">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-
-  <style>
-    #splash-screen {
-      position: fixed;
-      inset: 0;
-      background:
-        radial-gradient(circle at top, rgba(255,0,80,0.18), transparent 35%),
-        radial-gradient(circle at bottom right, rgba(0,243,255,0.12), transparent 25%),
-        #0b1220;
-      z-index: 99999;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      transition: opacity 0.45s ease-out, visibility 0.45s;
-    }
-    .splash-orb {
-      width: 88px;
-      height: 88px;
-      border-radius: 50%;
-      display: grid;
-      place-items: center;
-      color: white;
-      font-size: 2rem;
-      background: linear-gradient(135deg, #ff0050, #00f3ff);
-      box-shadow: 0 0 35px rgba(255, 0, 80, 0.35), 0 0 60px rgba(0, 243, 255, 0.12);
-      animation: orbPulse 1.35s infinite ease-in-out;
-    }
-    .splash-text {
-      font-family: 'Outfit', sans-serif;
-      font-size: 2rem;
-      color: white;
-      margin-top: 18px;
-      font-weight: 800;
-      letter-spacing: 0.6px;
-    }
-    .splash-sub {
-      margin-top: 6px;
-      color: #8aa0b8;
-      font-size: 0.92rem;
-    }
-    @keyframes orbPulse {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.08); }
-      100% { transform: scale(1); }
-    }
-  </style>
 </head>
 <body>
-  <div id="splash-screen">
-    <div class="splash-orb"><i class="fas fa-bolt"></i></div>
-    <div class="splash-text">Fluxgram</div>
-    <div class="splash-sub">Fast. Clean. Connected.</div>
-  </div>
-
   <div id="toast-container"></div>
   <div id="global-loader" class="loader-overlay hidden"><div class="spinner"></div></div>
 
@@ -75,66 +20,51 @@
           <div class="auth-brand-orb"><i class="fas fa-bolt"></i></div>
           <div>
             <div class="auth-title">Fluxgram</div>
-            <div class="auth-tag">Telegram-like messaging, your style</div>
+            <div class="auth-tag">Login to continue</div>
           </div>
         </div>
+
+        <div id="app-error" class="hidden" style="margin-bottom:14px; padding:12px; border-radius:12px; background:rgba(255,59,48,.12); color:#ff8a84; font-size:.9rem;"></div>
 
         <div id="login-form">
           <input type="email" id="login-email" class="auth-input" placeholder="Email Address" required>
           <input type="password" id="login-password" class="auth-input" placeholder="Password" required>
-          <button class="auth-btn" onclick="FluxgramV41?.auth?.login()">Sign In</button>
-          <div class="auth-link" onclick="FluxgramV41?.ui?.toggleForms('signup')">Create an Account</div>
-          <div class="auth-link muted-link" onclick="FluxgramV41?.ui?.toggleForms('reset')">Forgot Password?</div>
+          <button class="auth-btn" onclick="window.FluxgramV41?.auth?.login()">Sign In</button>
+          <div class="auth-link" onclick="window.FluxgramV41?.ui?.toggleForms('signup')">Create an Account</div>
+          <div class="auth-link muted-link" onclick="window.FluxgramV41?.ui?.toggleForms('reset')">Forgot Password?</div>
         </div>
 
         <div id="signup-form" class="hidden">
           <input type="text" id="signup-username" class="auth-input" placeholder="Username (Unique)" required>
           <input type="email" id="signup-email" class="auth-input" placeholder="Email Address" required>
           <input type="password" id="signup-password" class="auth-input" placeholder="Password (Min 6 chars)" required>
-          <button class="auth-btn" onclick="FluxgramV41?.auth?.signup()">Sign Up</button>
-          <div class="auth-link" onclick="FluxgramV41?.ui?.toggleForms('login')">Already have an account? Sign In</div>
+          <button class="auth-btn" onclick="window.FluxgramV41?.auth?.signup()">Sign Up</button>
+          <div class="auth-link" onclick="window.FluxgramV41?.ui?.toggleForms('login')">Already have an account? Sign In</div>
         </div>
 
         <div id="reset-form" class="hidden">
           <input type="email" id="reset-email" class="auth-input" placeholder="Enter Email Address" required>
-          <button class="auth-btn" onclick="FluxgramV41?.auth?.reset()">Send Reset Link</button>
-          <div class="auth-link" onclick="FluxgramV41?.ui?.toggleForms('login')">Back to Sign In</div>
+          <button class="auth-btn" onclick="window.FluxgramV41?.auth?.reset()">Send Reset Link</button>
+          <div class="auth-link" onclick="window.FluxgramV41?.ui?.toggleForms('login')">Back to Sign In</div>
         </div>
       </div>
     </div>
   </div>
 
   <script type="module">
-    const hideSplash = () => {
-      const splash = document.getElementById("splash-screen");
-      if (!splash) return;
-      splash.style.opacity = "0";
-      setTimeout(() => {
-        splash.style.visibility = "hidden";
-      }, 450);
-    };
+    const errorBox = document.getElementById("app-error");
 
-    window.addEventListener("load", () => {
-      setTimeout(hideSplash, 2200);
+    import("./js/main.js").catch((err) => {
+      console.error("main.js failed:", err);
+      errorBox.classList.remove("hidden");
+      errorBox.textContent = "App failed to load: " + (err?.message || err);
     });
 
-    window.addEventListener("error", () => {
-      hideSplash();
+    window.addEventListener("error", (e) => {
+      console.error("window error:", e.error || e.message);
+      errorBox.classList.remove("hidden");
+      errorBox.textContent = "Runtime error: " + (e.message || "Unknown error");
     });
-
-    import("./js/main.js")
-      .then(() => {})
-      .catch((err) => {
-        console.error("main.js load failed:", err);
-        hideSplash();
-        const toastBox = document.getElementById("toast-container");
-        if (toastBox) {
-          const t = document.createElement("div");
-          t.className = "toast error";
-          t.textContent = "App load failed. Check js/main.js or imports.";
-          toastBox.appendChild(t);
-        }
-      });
   </script>
 </body>
 </html>
