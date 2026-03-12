@@ -6,9 +6,8 @@
     <title>Fluxgram | Dashboard</title>
 
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#1c242f">
+    <meta name="theme-color" content="#111827">
     <link rel="apple-touch-icon" href="logo.png">
-
     <link rel="stylesheet" href="style.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 </head>
@@ -16,53 +15,59 @@
     <div id="toast-container"></div>
     <div id="global-loader" class="loader-overlay hidden"><div class="spinner"></div></div>
 
-    <div class="app-container">
-        <div class="header">
-            <div class="header-title flux-logo-title">
-                <i class="fas fa-bolt"></i> Fluxgram
-            </div>
-            <div class="dashboard-actions">
-                <button class="icon-btn" onclick="Fluxgram.profile.openMyProfile()"><i class="fas fa-user-circle"></i></button>
-                <button class="icon-btn" onclick="document.getElementById('create-modal').classList.remove('hidden')"><i class="fas fa-users"></i></button>
-                <button class="icon-btn" onclick="Fluxgram.auth.logout()"><i class="fas fa-sign-out-alt"></i></button>
-            </div>
-        </div>
-
-        <div class="search-bar">
-            <div class="search-input-wrap">
-                <i class="fas fa-search"></i>
-                <input type="text" id="search-input" placeholder="Search @username or public chat..." oninput="Fluxgram.dash.search()">
-            </div>
-        </div>
-
-        <div id="connection-status-bar" class="connection-bar hidden">
-            <i id="connection-icon" class="fas fa-sync-alt fa-spin"></i>
-            <span id="connection-text">Updating...</span>
-        </div>
-
-        <div class="scroll-area">
-            <div id="search-results" class="hidden search-results"></div>
-
-            <div id="chat-list">
-                <div class="skeleton-chat">
-                    <div class="skeleton-avatar"></div>
-                    <div class="skeleton-info">
-                        <div class="skeleton-line-1"></div>
-                        <div class="skeleton-line-2"></div>
+    <div class="app-shell">
+        <div class="app-container app-frame">
+            <div class="header app-header">
+                <div class="brand-block">
+                    <div class="brand-orb"><i class="fas fa-bolt"></i></div>
+                    <div>
+                        <div class="header-title flux-logo-title">Fluxgram</div>
+                        <div class="header-subtitle">Your chats</div>
                     </div>
                 </div>
-                <div class="skeleton-chat">
-                    <div class="skeleton-avatar"></div>
-                    <div class="skeleton-info">
-                        <div class="skeleton-line-1" style="width:40%"></div>
-                        <div class="skeleton-line-2" style="width:70%"></div>
-                    </div>
+                <div class="dashboard-actions">
+                    <button class="icon-btn" onclick="Fluxgram.profile.openMyProfile()"><i class="fas fa-user-circle"></i></button>
+                    <button class="icon-btn" onclick="document.getElementById('create-modal').classList.remove('hidden')"><i class="fas fa-users"></i></button>
+                    <button class="icon-btn" onclick="Fluxgram.auth.logout()"><i class="fas fa-sign-out-alt"></i></button>
                 </div>
-                <div class="skeleton-chat">
-                    <div class="skeleton-avatar"></div>
-                    <div class="skeleton-info">
-                        <div class="skeleton-line-1" style="width:50%"></div>
-                        <div class="skeleton-line-2" style="width:60%"></div>
+            </div>
+
+            <div class="search-bar sticky-surface">
+                <div class="search-input-wrap">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="search-input" placeholder="Search @username or public chat..." oninput="Fluxgram.dash.search()">
+                </div>
+            </div>
+
+            <div id="connection-status-bar" class="connection-bar hidden">
+                <i id="connection-icon" class="fas fa-sync-alt fa-spin"></i>
+                <span id="connection-text">Updating...</span>
+            </div>
+
+            <div class="scroll-area dashboard-scroll">
+                <div id="search-results" class="hidden search-results"></div>
+
+                <div id="chat-list">
+                    <div class="skeleton-chat">
+                        <div class="skeleton-avatar"></div>
+                        <div class="skeleton-info">
+                            <div class="skeleton-line-1"></div>
+                            <div class="skeleton-line-2"></div>
+                        </div>
+                    </div>
+                    <div class="skeleton-chat">
+                        <div class="skeleton-avatar"></div>
+                        <div class="skeleton-info">
+                            <div class="skeleton-line-1" style="width:40%"></div>
+                            <div class="skeleton-line-2" style="width:70%"></div>
+                        </div>
+                    </div>
+                    <div class="skeleton-chat">
+                        <div class="skeleton-avatar"></div>
+                        <div class="skeleton-info">
+                            <div class="skeleton-line-1" style="width:50%"></div>
+                            <div class="skeleton-line-2" style="width:60%"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -70,7 +75,7 @@
     </div>
 
     <div id="create-modal" class="hidden modal-backdrop">
-        <div class="modal-card">
+        <div class="modal-card sheet-card">
             <h2 class="modal-title">Create New</h2>
 
             <div class="avatar-upload-wrap clean">
@@ -176,7 +181,7 @@
     </div>
 
     <div id="email-change-modal" class="hidden modal-backdrop">
-        <div class="modal-card">
+        <div class="modal-card sheet-card">
             <h3 class="modal-title left">Change Email</h3>
             <p class="muted-text">For security, enter your current password to set a new email.</p>
 
@@ -190,6 +195,6 @@
         </div>
     </div>
 
-    <script type="module" src="app.js?v=200"></script>
+    <script type="module" src="app.js?v=300"></script>
 </body>
 </html>
