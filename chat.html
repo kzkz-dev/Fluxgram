@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Fluxgram | Chat</title>
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#1c242f">
+    <meta name="theme-color" content="#111827">
     <link rel="apple-touch-icon" href="logo.png">
     <link rel="stylesheet" href="style.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -14,108 +14,90 @@
     <div id="toast-container"></div>
     <div id="global-loader" class="loader-overlay hidden"><div class="spinner"></div></div>
 
-    <div class="app-container">
-        <div class="header">
-            <button class="icon-btn" onclick="window.location.href='dashboard.html'" style="margin-right:10px;">
-                <i class="fas fa-arrow-left"></i>
-            </button>
-
-            <div class="chat-header-info" onclick="Fluxgram.ui.showProfile()">
-                <div class="avatar" id="chat-avatar"></div>
-                <div class="chat-header-text">
-                    <div class="chat-name" id="chat-name">Loading...</div>
-                    <div class="chat-status" id="chat-status">Connecting...</div>
-                </div>
-            </div>
-
-            <div class="chat-header-actions">
-                <button class="icon-btn" id="btn-copy-link" onclick="Fluxgram.chat.copyLink()">
-                    <i class="fas fa-link"></i>
-                </button>
-                <button class="icon-btn hidden" id="btn-add-member" onclick="Fluxgram.chat.promptAddMember()">
-                    <i class="fas fa-user-plus"></i>
-                </button>
-                <button class="icon-btn" id="btn-call-video" onclick="Fluxgram.call.startCall('video')">
-                    <i class="fas fa-video"></i>
-                </button>
-                <button class="icon-btn" id="btn-call-audio" onclick="Fluxgram.call.startCall('audio')">
-                    <i class="fas fa-phone-alt"></i>
-                </button>
-            </div>
-        </div>
-
-        <div class="chat-bg">
-            <div class="messages-container" id="messages-container"></div>
-
-            <div id="typing-indicator" class="typing-indicator hidden">
-                <span class="typing-dot"></span>
-                <span id="typing-text">Typing...</span>
-            </div>
-
-            <div id="emoji-panel" class="hidden">
-                <span onclick="Fluxgram.chat.addEmoji('😀')">😀</span>
-                <span onclick="Fluxgram.chat.addEmoji('😂')">😂</span>
-                <span onclick="Fluxgram.chat.addEmoji('😍')">😍</span>
-                <span onclick="Fluxgram.chat.addEmoji('❤️')">❤️</span>
-                <span onclick="Fluxgram.chat.addEmoji('🔥')">🔥</span>
-                <span onclick="Fluxgram.chat.addEmoji('👍')">👍</span>
-                <span onclick="Fluxgram.chat.addEmoji('😭')">😭</span>
-                <span onclick="Fluxgram.chat.addEmoji('🥰')">🥰</span>
-                <span onclick="Fluxgram.chat.addEmoji('😎')">😎</span>
-                <span onclick="Fluxgram.chat.addEmoji('🤝')">🤝</span>
-                <span onclick="Fluxgram.chat.addEmoji('🎉')">🎉</span>
-                <span onclick="Fluxgram.chat.addEmoji('💯')">💯</span>
-            </div>
-
-            <div id="reply-preview-bar" class="reply-preview-bar hidden">
-                <div style="flex:1; overflow:hidden;">
-                    <div id="reply-preview-name" class="reply-preview-name">Name</div>
-                    <div id="reply-preview-text" class="reply-preview-text">Text</div>
-                </div>
-                <button class="icon-btn" onclick="Fluxgram.chat.cancelReply()">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-
-            <div class="input-area" id="input-area">
-                <button class="icon-btn" id="btn-emoji" onclick="Fluxgram.chat.toggleEmoji()">
-                    <i class="far fa-smile"></i>
+    <div class="app-shell">
+        <div class="app-container app-frame chat-frame">
+            <div class="header app-header chat-topbar">
+                <button class="icon-btn" onclick="window.location.href='dashboard.html'" style="margin-right:10px;">
+                    <i class="fas fa-arrow-left"></i>
                 </button>
 
-                <button class="icon-btn" id="btn-attach" onclick="document.getElementById('chat-file-input').click()">
-                    <i class="fas fa-paperclip"></i>
-                </button>
-
-                <input type="file" id="chat-file-input" class="hidden" accept="image/*" onchange="Fluxgram.chat.sendImage(event)">
-
-                <div class="input-wrapper" id="input-wrapper">
-                    <textarea id="msg-input" class="msg-input" rows="1" placeholder="Message"></textarea>
-                </div>
-
-                <button class="icon-btn hidden" id="btn-send-text" onclick="Fluxgram.chat.send()">
-                    <i class="fas fa-paper-plane send-icon"></i>
-                </button>
-
-                <button class="icon-btn" id="btn-record-voice"
-                    onmousedown="Fluxgram.chat.startVoice(event)"
-                    onmouseup="Fluxgram.chat.stopVoice(event)"
-                    onmousemove="Fluxgram.chat.slideVoice(event)"
-                    ontouchstart="Fluxgram.chat.startVoice(event)"
-                    ontouchend="Fluxgram.chat.stopVoice(event)"
-                    ontouchmove="Fluxgram.chat.slideVoice(event)">
-                    <i class="fas fa-microphone"></i>
-                </button>
-
-                <div id="recording-ui" class="hidden recording-ui">
-                    <div class="record-left">
-                        <div class="record-dot"></div>
-                        <span id="record-time" class="record-time">0:00</span>
+                <div class="chat-header-info" onclick="Fluxgram.ui.showProfile()">
+                    <div class="avatar" id="chat-avatar"></div>
+                    <div class="chat-header-text">
+                        <div class="chat-name" id="chat-name">Loading...</div>
+                        <div class="chat-status" id="chat-status">Connecting...</div>
                     </div>
-                    <div class="slide-cancel-text">
-                        <i class="fas fa-chevron-left"></i> Slide to cancel
+                </div>
+
+                <div class="chat-header-actions">
+                    <button class="icon-btn" id="btn-copy-link" onclick="Fluxgram.chat.copyLink()"><i class="fas fa-link"></i></button>
+                    <button class="icon-btn hidden" id="btn-add-member" onclick="Fluxgram.chat.promptAddMember()"><i class="fas fa-user-plus"></i></button>
+                    <button class="icon-btn" id="btn-call-video" onclick="Fluxgram.call.startCall('video')"><i class="fas fa-video"></i></button>
+                    <button class="icon-btn" id="btn-call-audio" onclick="Fluxgram.call.startCall('audio')"><i class="fas fa-phone-alt"></i></button>
+                </div>
+            </div>
+
+            <div class="chat-bg mobile-chat-bg">
+                <div class="messages-container" id="messages-container"></div>
+
+                <div id="typing-indicator" class="typing-indicator hidden">
+                    <span class="typing-dot"></span>
+                    <span id="typing-text">Typing...</span>
+                </div>
+
+                <div id="emoji-panel" class="hidden">
+                    <span onclick="Fluxgram.chat.addEmoji('😀')">😀</span>
+                    <span onclick="Fluxgram.chat.addEmoji('😂')">😂</span>
+                    <span onclick="Fluxgram.chat.addEmoji('😍')">😍</span>
+                    <span onclick="Fluxgram.chat.addEmoji('❤️')">❤️</span>
+                    <span onclick="Fluxgram.chat.addEmoji('🔥')">🔥</span>
+                    <span onclick="Fluxgram.chat.addEmoji('👍')">👍</span>
+                    <span onclick="Fluxgram.chat.addEmoji('😭')">😭</span>
+                    <span onclick="Fluxgram.chat.addEmoji('🥰')">🥰</span>
+                    <span onclick="Fluxgram.chat.addEmoji('😎')">😎</span>
+                    <span onclick="Fluxgram.chat.addEmoji('🤝')">🤝</span>
+                    <span onclick="Fluxgram.chat.addEmoji('🎉')">🎉</span>
+                    <span onclick="Fluxgram.chat.addEmoji('💯')">💯</span>
+                </div>
+
+                <div id="reply-preview-bar" class="reply-preview-bar hidden">
+                    <div style="flex:1; overflow:hidden;">
+                        <div id="reply-preview-name" class="reply-preview-name">Name</div>
+                        <div id="reply-preview-text" class="reply-preview-text">Text</div>
                     </div>
-                    <div class="record-mic">
+                    <button class="icon-btn" onclick="Fluxgram.chat.cancelReply()"><i class="fas fa-times"></i></button>
+                </div>
+
+                <div class="input-area mobile-input-area" id="input-area">
+                    <button class="icon-btn" id="btn-emoji" onclick="Fluxgram.chat.toggleEmoji()"><i class="far fa-smile"></i></button>
+                    <button class="icon-btn" id="btn-attach" onclick="document.getElementById('chat-file-input').click()"><i class="fas fa-paperclip"></i></button>
+                    <input type="file" id="chat-file-input" class="hidden" accept="image/*" onchange="Fluxgram.chat.sendImage(event)">
+
+                    <div class="input-wrapper" id="input-wrapper">
+                        <textarea id="msg-input" class="msg-input" rows="1" placeholder="Message"></textarea>
+                    </div>
+
+                    <button class="icon-btn hidden" id="btn-send-text" onclick="Fluxgram.chat.send()"><i class="fas fa-paper-plane send-icon"></i></button>
+
+                    <button class="icon-btn" id="btn-record-voice"
+                        onmousedown="Fluxgram.chat.startVoice(event)"
+                        onmouseup="Fluxgram.chat.stopVoice(event)"
+                        onmousemove="Fluxgram.chat.slideVoice(event)"
+                        ontouchstart="Fluxgram.chat.startVoice(event)"
+                        ontouchend="Fluxgram.chat.stopVoice(event)"
+                        ontouchmove="Fluxgram.chat.slideVoice(event)">
                         <i class="fas fa-microphone"></i>
+                    </button>
+
+                    <div id="recording-ui" class="hidden recording-ui">
+                        <div class="record-left">
+                            <div class="record-dot"></div>
+                            <span id="record-time" class="record-time">0:00</span>
+                        </div>
+                        <div class="slide-cancel-text">
+                            <i class="fas fa-chevron-left"></i> Slide to cancel
+                        </div>
+                        <div class="record-mic"><i class="fas fa-microphone"></i></div>
                     </div>
                 </div>
             </div>
@@ -124,13 +106,9 @@
 
     <div id="profile-view" class="hidden profile-screen">
         <div class="header profile-header">
-            <button class="icon-btn" onclick="Fluxgram.ui.hideProfile()">
-                <i class="fas fa-arrow-left"></i>
-            </button>
+            <button class="icon-btn" onclick="Fluxgram.ui.hideProfile()"><i class="fas fa-arrow-left"></i></button>
             <div class="header-title">Profile</div>
-            <button class="icon-btn hidden" id="btn-edit-chat" onclick="Fluxgram.profile.openChatEdit()">
-                <i class="fas fa-edit"></i>
-            </button>
+            <button class="icon-btn hidden" id="btn-edit-chat" onclick="Fluxgram.profile.openChatEdit()"><i class="fas fa-edit"></i></button>
         </div>
 
         <div class="profile-scroll">
@@ -166,7 +144,7 @@
 
                     <div id="pv-username-box" class="tg-item">
                         <div class="tg-icon"><i class="fas fa-at"></i></div>
-                        <div class="tg-item-content">
+                        <div class="tg-item-content no-border">
                             <span class="tg-text-main" id="pv-username">@username</span>
                             <span class="tg-text-sub">Username</span>
                         </div>
@@ -177,7 +155,7 @@
     </div>
 
     <div id="edit-chat-modal" class="hidden modal-backdrop">
-        <div class="modal-card">
+        <div class="modal-card sheet-card">
             <h2 class="modal-title">Edit Settings</h2>
 
             <div class="avatar-upload-wrap clean">
@@ -198,9 +176,7 @@
             <label class="input-label">Description</label>
             <textarea id="edit-chat-desc" class="auth-input compact" rows="2" style="resize:none;"></textarea>
 
-            <button onclick="Fluxgram.profile.deleteChat()" class="danger-outline-btn">
-                <i class="fas fa-trash"></i> Delete Group/Channel
-            </button>
+            <button onclick="Fluxgram.profile.deleteChat()" class="danger-outline-btn"><i class="fas fa-trash"></i> Delete Group/Channel</button>
 
             <div class="modal-actions">
                 <button onclick="document.getElementById('edit-chat-modal').classList.add('hidden')" class="ghost-btn">Cancel</button>
@@ -238,37 +214,21 @@
         </div>
 
         <div id="call-controls-incoming" class="hidden incoming-call-actions">
-            <div class="call-btn-circle danger incoming-big" onclick="Fluxgram.call.endCall()">
-                <i class="fas fa-phone-slash"></i>
-            </div>
-            <div class="call-btn-circle incoming-big accept-call" onclick="Fluxgram.call.acceptCall()">
-                <i class="fas fa-phone"></i>
-            </div>
+            <div class="call-btn-circle danger incoming-big" onclick="Fluxgram.call.endCall()"><i class="fas fa-phone-slash"></i></div>
+            <div class="call-btn-circle incoming-big accept-call" onclick="Fluxgram.call.acceptCall()"><i class="fas fa-phone"></i></div>
         </div>
     </div>
 
     <div id="msg-action-modal" class="hidden action-sheet-backdrop">
         <div class="action-sheet">
             <h3 class="action-sheet-title">Message Options</h3>
-
-            <button id="btn-reply-msg" class="sheet-btn accent-btn">
-                <i class="fas fa-reply"></i> Reply
-            </button>
-
-            <button id="btn-delete-everyone" class="hidden sheet-btn danger-btn">
-                <i class="fas fa-trash-alt"></i> Delete for everyone
-            </button>
-
-            <button id="btn-delete-me" class="sheet-btn">
-                <i class="fas fa-eraser"></i> Delete for me
-            </button>
-
-            <button onclick="document.getElementById('msg-action-modal').classList.add('hidden')" class="sheet-btn muted-btn">
-                Cancel
-            </button>
+            <button id="btn-reply-msg" class="sheet-btn accent-btn"><i class="fas fa-reply"></i> Reply</button>
+            <button id="btn-delete-everyone" class="hidden sheet-btn danger-btn"><i class="fas fa-trash-alt"></i> Delete for everyone</button>
+            <button id="btn-delete-me" class="sheet-btn"><i class="fas fa-eraser"></i> Delete for me</button>
+            <button onclick="document.getElementById('msg-action-modal').classList.add('hidden')" class="sheet-btn muted-btn">Cancel</button>
         </div>
     </div>
 
-    <script type="module" src="app.js?v=200"></script>
+    <script type="module" src="app.js?v=300"></script>
 </body>
 </html>
