@@ -88,17 +88,13 @@ window._startX = 0;
 
 const formatTime = (ts) => {
     if (!ts) return "Just now";
-    if (typeof ts.toDate === "function") {
-        return ts.toDate().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    }
+    if (typeof ts.toDate === "function") return ts.toDate().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     return "";
 };
 
 const formatDate = (ts) => {
     if (!ts) return "";
-    if (typeof ts.toDate === "function") {
-        return ts.toDate().toLocaleDateString("en-US", { month: "long", day: "numeric" });
-    }
+    if (typeof ts.toDate === "function") return ts.toDate().toLocaleDateString("en-US", { month: "long", day: "numeric" });
     return "";
 };
 
@@ -109,13 +105,16 @@ const getMillis = (ts) => {
 };
 
 window.Fluxgram.utils = {
-    escapeHTML: (text = "") => {
-        return String(text)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#39;");
+    escapeHTML: (text = "") => String(text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;"),
+
+    parseMentionsSafe: (text = "") => {
+        const escaped = window.Fluxgram.utils.escapeHTML(text).replace(/\n/g, "<br>");
+        return escaped.replace(/@([a-zA-Z0-9_]{6,})/g, `<span class="mention" data-username="$1">@$1</span>`);
     },
 
     isUsernameUnique: async (username, currentUsername = null) => {
@@ -127,18 +126,8 @@ window.Fluxgram.utils = {
         return sU.empty && sC.empty;
     },
 
-    parseMentionsSafe: (text = "") => {
-        const escaped = window.Fluxgram.utils.escapeHTML(text).replace(/\n/g, "<br>");
-        return escaped.replace(
-            /@([a-zA-Z0-9_]{6,})/g,
-            `<span class="mention" data-username="$1">@$1</span>`
-        );
-    },
-
     renderAvatarHTML: (photoURL, fallbackName, sizeClass = "") => {
-        if (photoURL && photoURL.length > 10) {
-            return `<img src="${photoURL}" alt="avatar" class="${sizeClass}">`;
-        }
+        if (photoURL && photoURL.length > 10) return `<img src="${photoURL}" alt="avatar" class="${sizeClass}">`;
         return `<span class="${sizeClass}">${(fallbackName || "U").charAt(0).toUpperCase()}</span>`;
     },
 
@@ -156,11 +145,9 @@ window.Fluxgram.utils = {
                         height = Math.round((height * maxWidth) / width);
                         width = maxWidth;
                     }
-                } else {
-                    if (height > maxWidth) {
-                        width = Math.round((width * maxWidth) / height);
-                        height = maxWidth;
-                    }
+                } else if (height > maxWidth) {
+                    width = Math.round((width * maxWidth) / height);
+                    height = maxWidth;
                 }
 
                 canvas.width = width;
@@ -178,12 +165,7 @@ window.Fluxgram.utils = {
         if (user.isOnline) return "online";
         if (user.lastSeen && typeof user.lastSeen.toDate === "function") {
             const date = user.lastSeen.toDate();
-            return `last seen ${date.toLocaleString([], {
-                month: "short",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit"
-            })}`;
+            return `last seen ${date.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}`;
         }
         return "offline";
     },
@@ -201,16 +183,6 @@ window.Fluxgram.utils = {
     setText: (id, value) => {
         const el = document.getElementById(id);
         if (el) el.innerText = value;
-    },
-
-    hideEl: (id) => {
-        const el = document.getElementById(id);
-        if (el) el.classList.add("hidden");
-    },
-
-    showEl: (id) => {
-        const el = document.getElementById(id);
-        if (el) el.classList.remove("hidden");
     },
 
     getCachedUser: async (uid) => {
@@ -256,8 +228,8 @@ window.Fluxgram.network = {
 
 window.Fluxgram.ui = {
     loader: (show) => {
-        const l = document.getElementById("global-loader");
-        if (l) l.classList.toggle("hidden", !show);
+        const el = document.getElementById("global-loader");
+        if (el) el.classList.toggle("hidden", !show);
     },
 
     toast: (msg, type = "success") => {
@@ -269,8 +241,8 @@ window.Fluxgram.ui = {
         container.appendChild(toast);
         setTimeout(() => {
             toast.style.opacity = "0";
-            setTimeout(() => toast.remove(), 250);
-        }, 3000);
+            setTimeout(() => toast.remove(), 220);
+        }, 2800);
     },
 
     toggleForms: (formType) => {
@@ -294,46 +266,27 @@ window.Fluxgram.ui = {
 
         if (State.activeChatData && (State.activeChatData.type === "group" || State.activeChatData.type === "channel")) {
             Utils.setText("pv-name", State.activeChatData.name || "Chat");
-            document.getElementById("pv-avatar").innerHTML = Utils.renderAvatarHTML(
-                State.activeChatData.photoURL,
-                State.activeChatData.name || "C"
-            );
-
+            document.getElementById("pv-avatar").innerHTML = Utils.renderAvatarHTML(State.activeChatData.photoURL, State.activeChatData.name || "C");
             Utils.setText("pv-bio", State.activeChatData.desc || "Public conversation on Fluxgram");
             Utils.setText("pv-username", State.activeChatData.username ? `@${State.activeChatData.username}` : "No public username");
-
-            Utils.hideEl("pv-btn-audio");
-            Utils.hideEl("pv-btn-video");
-
+            document.getElementById("pv-btn-audio")?.classList.add("hidden");
+            document.getElementById("pv-btn-video")?.classList.add("hidden");
             const editBtn = document.getElementById("btn-edit-chat");
-            if (editBtn) {
-                if (State.activeChatData.admin === State.currentUser.uid) editBtn.classList.remove("hidden");
-                else editBtn.classList.add("hidden");
-            }
+            if (editBtn) editBtn.classList.toggle("hidden", State.activeChatData.admin !== State.currentUser.uid);
         } else if (State.activeChatUser) {
             Utils.setText("pv-name", State.activeChatUser.name || State.activeChatUser.username || "User");
-            document.getElementById("pv-avatar").innerHTML = Utils.renderAvatarHTML(
-                State.activeChatUser.photoURL,
-                State.activeChatUser.username || State.activeChatUser.name || "U"
-            );
-
+            document.getElementById("pv-avatar").innerHTML = Utils.renderAvatarHTML(State.activeChatUser.photoURL, State.activeChatUser.username || State.activeChatUser.name || "U");
             Utils.setText("pv-bio", State.activeChatUser.bio || "Available on Fluxgram");
             Utils.setText("pv-username", State.activeChatUser.username ? `@${State.activeChatUser.username}` : "No username");
-
-            Utils.showEl("pv-btn-audio");
-            Utils.showEl("pv-btn-video");
-
-            const editBtn = document.getElementById("btn-edit-chat");
-            if (editBtn) editBtn.classList.add("hidden");
+            document.getElementById("pv-btn-audio")?.classList.remove("hidden");
+            document.getElementById("pv-btn-video")?.classList.remove("hidden");
+            document.getElementById("btn-edit-chat")?.classList.add("hidden");
         }
 
         pv.classList.remove("hidden");
     },
 
-    hideProfile: () => {
-        const pv = document.getElementById("profile-view");
-        if (pv) pv.classList.add("hidden");
-    }
+    hideProfile: () => document.getElementById("profile-view")?.classList.add("hidden")
 };
 
 const UI = window.Fluxgram.ui;
@@ -346,7 +299,7 @@ window.Fluxgram.auth = {
         UI.loader(true);
         try {
             await signInWithEmailAndPassword(auth, e, p);
-        } catch (err) {
+        } catch {
             UI.toast("Invalid credentials.", "error");
             UI.loader(false);
         }
@@ -356,9 +309,7 @@ window.Fluxgram.auth = {
         let u = document.getElementById("signup-username")?.value.trim().replace("@", "");
         const e = document.getElementById("signup-email")?.value.trim();
         const p = document.getElementById("signup-password")?.value.trim();
-
         if (!u || !e || p.length < 6) return UI.toast("Fill all fields. Password min 6 chars.", "error");
-
         UI.loader(true);
         try {
             if (!(await Utils.isUsernameUnique(u))) throw new Error("Username already taken.");
@@ -396,10 +347,7 @@ window.Fluxgram.auth = {
     logout: async () => {
         UI.loader(true);
         if (auth.currentUser) {
-            await setDoc(doc(db, "users", auth.currentUser.uid), {
-                isOnline: false,
-                lastSeen: serverTimestamp()
-            }, { merge: true });
+            await setDoc(doc(db, "users", auth.currentUser.uid), { isOnline: false, lastSeen: serverTimestamp() }, { merge: true });
         }
         await signOut(auth);
     }
@@ -407,16 +355,12 @@ window.Fluxgram.auth = {
 
 function updatePresence(isOnline) {
     if (auth.currentUser) {
-        setDoc(doc(db, "users", auth.currentUser.uid), {
-            isOnline,
-            lastSeen: serverTimestamp()
-        }, { merge: true }).catch(() => {});
+        setDoc(doc(db, "users", auth.currentUser.uid), { isOnline, lastSeen: serverTimestamp() }, { merge: true }).catch(() => {});
     }
 }
 
 window.addEventListener("beforeunload", () => updatePresence(false));
 document.addEventListener("visibilitychange", () => updatePresence(document.visibilityState === "visible"));
-
 Fluxgram.network.init();
 
 onAuthStateChanged(auth, async (user) => {
@@ -424,11 +368,7 @@ onAuthStateChanged(auth, async (user) => {
 
     if (user) {
         State.currentUser = user;
-
-        onSnapshot(doc(db, "users", user.uid), (d) => {
-            if (d.exists()) State.userData = d.data();
-        });
-
+        onSnapshot(doc(db, "users", user.uid), (d) => { if (d.exists()) State.userData = d.data(); });
         updatePresence(true);
 
         const deepLinkUsername = UI.getParam("link");
@@ -443,55 +383,45 @@ onAuthStateChanged(auth, async (user) => {
         }
 
         if (path.includes("dashboard")) {
-            window.Fluxgram.dash.loadChats();
+            Fluxgram.dash.loadChats();
         } else if (path.includes("chat")) {
-            window.Fluxgram.chat.init();
-            window.Fluxgram.call.listenForCalls();
+            Fluxgram.chat.init();
+            Fluxgram.call.listenForCalls();
         }
     } else {
         State.currentUser = null;
-        if (path.includes("dashboard") || path.includes("chat")) {
-            window.location.replace("index.html");
-        }
+        if (path.includes("dashboard") || path.includes("chat")) window.location.replace("index.html");
     }
 
     const splash = document.getElementById("splash-screen");
     if (splash) {
         splash.style.opacity = "0";
-        setTimeout(() => {
-            splash.style.visibility = "hidden";
-        }, 500);
+        setTimeout(() => { splash.style.visibility = "hidden"; }, 450);
     }
-
     UI.loader(false);
 });
 
 window.Fluxgram.profile = {
     openMyProfile: () => {
         if (!State.userData) return;
-
         Utils.setText("my-display-name", State.userData.name || State.userData.username || "User");
         Utils.setText("my-display-email", State.userData.email || "Not set");
         Utils.setText("my-display-bio", State.userData.bio || "Available on Fluxgram");
         Utils.setText("my-display-username", `@${State.userData.username || "unknown"}`);
-
         const avatar = document.getElementById("my-display-avatar");
         if (avatar) avatar.innerHTML = Utils.renderAvatarHTML(State.userData.photoURL, State.userData.username || "U");
-
         document.getElementById("my-profile-edit-state")?.classList.add("hidden");
-        const viewState = document.getElementById("my-profile-view-state");
-        if (viewState) {
-            viewState.classList.remove("hidden");
-            viewState.style.display = "flex";
+        const view = document.getElementById("my-profile-view-state");
+        if (view) {
+            view.classList.remove("hidden");
+            view.style.display = "flex";
         }
-
         document.getElementById("my-profile-modal")?.classList.remove("hidden");
     },
 
     toggleEditState: (showEdit) => {
         const viewState = document.getElementById("my-profile-view-state");
         const editState = document.getElementById("my-profile-edit-state");
-
         if (showEdit) {
             document.getElementById("edit-user-name").value = State.userData.name || "";
             document.getElementById("edit-user-username").value = State.userData.username || "";
@@ -510,21 +440,17 @@ window.Fluxgram.profile = {
         const file = event.target.files[0];
         if (!file) return;
         UI.loader(true);
-
         try {
             const reader = new FileReader();
             reader.onload = async (e) => {
                 const base64Str = await Utils.compressToBase64(e.target.result, 300, 0.7);
                 await setDoc(doc(db, "users", State.currentUser.uid), { photoURL: base64Str }, { merge: true });
-
-                const avatar = document.getElementById("my-display-avatar");
-                if (avatar) avatar.innerHTML = Utils.renderAvatarHTML(base64Str, State.userData.username);
-
+                document.getElementById("my-display-avatar").innerHTML = Utils.renderAvatarHTML(base64Str, State.userData.username || "U");
                 UI.toast("Profile photo updated!", "success");
                 UI.loader(false);
             };
             reader.readAsDataURL(file);
-        } catch (e) {
+        } catch {
             UI.toast("Failed to update photo", "error");
             UI.loader(false);
         }
@@ -534,26 +460,12 @@ window.Fluxgram.profile = {
         const n = document.getElementById("edit-user-name").value.trim();
         let u = document.getElementById("edit-user-username").value.trim().replace("@", "");
         const b = document.getElementById("edit-user-bio").value.trim();
-
         if (!u || u.length < 6) return UI.toast("Username must be at least 6 chars", "error");
-
         UI.loader(true);
         try {
-            if (!(await Utils.isUsernameUnique(u, State.userData.username))) {
-                throw new Error("This @username is already taken!");
-            }
-
-            await setDoc(doc(db, "users", State.currentUser.uid), {
-                name: n,
-                username: u,
-                searchKey: u.toLowerCase(),
-                bio: b
-            }, { merge: true });
-
-            State.userData.name = n;
-            State.userData.username = u;
-            State.userData.bio = b;
-
+            if (!(await Utils.isUsernameUnique(u, State.userData.username))) throw new Error("This @username is already taken!");
+            await setDoc(doc(db, "users", State.currentUser.uid), { name: n, username: u, searchKey: u.toLowerCase(), bio: b }, { merge: true });
+            State.userData.name = n; State.userData.username = u; State.userData.bio = b;
             Fluxgram.profile.openMyProfile();
             UI.toast("Info updated successfully!");
         } catch (e) {
@@ -566,23 +478,17 @@ window.Fluxgram.profile = {
     changeEmail: async () => {
         const pass = document.getElementById("email-change-password").value;
         const newEmail = document.getElementById("email-change-new").value.trim();
-
         if (!pass || !newEmail) return UI.toast("Enter password and new email", "error");
-
         UI.loader(true);
         try {
             const credential = EmailAuthProvider.credential(State.currentUser.email, pass);
             await reauthenticateWithCredential(auth.currentUser, credential);
             await updateEmail(auth.currentUser, newEmail);
-
-            await setDoc(doc(db, "users", State.currentUser.uid), {
-                email: newEmail
-            }, { merge: true });
-
+            await setDoc(doc(db, "users", State.currentUser.uid), { email: newEmail }, { merge: true });
             document.getElementById("email-change-modal").classList.add("hidden");
             Utils.setText("my-display-email", newEmail);
             UI.toast("Email updated successfully!", "success");
-        } catch (e) {
+        } catch {
             UI.toast("Error: Incorrect password or invalid email.", "error");
         } finally {
             UI.loader(false);
@@ -592,7 +498,6 @@ window.Fluxgram.profile = {
     previewImage: (event, imgId, textId) => {
         const file = event.target.files[0];
         if (!file) return;
-
         const reader = new FileReader();
         reader.onload = (e) => {
             const img = document.getElementById(imgId);
@@ -608,15 +513,12 @@ window.Fluxgram.profile = {
 
     openChatEdit: () => {
         if (!State.activeChatData || State.activeChatData.admin !== State.currentUser.uid) return;
-
         const d = State.activeChatData;
         document.getElementById("edit-chat-name").value = d.name || "";
         document.getElementById("edit-chat-username").value = d.username || "";
         document.getElementById("edit-chat-desc").value = d.desc || "";
-
         const preview = document.getElementById("chat-avatar-preview");
         const text = document.getElementById("chat-avatar-text");
-
         if (d.photoURL && d.photoURL.length > 10) {
             preview.src = d.photoURL;
             preview.classList.remove("hidden");
@@ -626,7 +528,6 @@ window.Fluxgram.profile = {
             text.classList.remove("hidden");
             text.innerText = (d.name || "G").charAt(0).toUpperCase();
         }
-
         document.getElementById("edit-chat-modal").classList.remove("hidden");
     },
 
@@ -635,29 +536,16 @@ window.Fluxgram.profile = {
         let u = document.getElementById("edit-chat-username").value.trim().replace("@", "");
         const desc = document.getElementById("edit-chat-desc").value.trim();
         const previewImg = document.getElementById("chat-avatar-preview");
-
         if (!n) return UI.toast("Name is required", "error");
         if (u && u.length < 6) return UI.toast("Username must be at least 6 chars", "error");
-
         UI.loader(true);
         try {
-            if (u && !(await Utils.isUsernameUnique(u, State.activeChatData.username))) {
-                throw new Error("This @username is already taken!");
-            }
-
+            if (u && !(await Utils.isUsernameUnique(u, State.activeChatData.username))) throw new Error("This @username is already taken!");
             let finalPhotoURL = State.activeChatData.photoURL || null;
             if (previewImg && !previewImg.classList.contains("hidden") && previewImg.src.startsWith("data:")) {
                 finalPhotoURL = await Utils.compressToBase64(previewImg.src, 150, 0.6);
             }
-
-            await updateDoc(doc(db, "chats", State.activeChatId), {
-                name: n,
-                username: u || null,
-                searchKey: u ? u.toLowerCase() : null,
-                desc,
-                photoURL: finalPhotoURL
-            });
-
+            await updateDoc(doc(db, "chats", State.activeChatId), { name: n, username: u || null, searchKey: u ? u.toLowerCase() : null, desc, photoURL: finalPhotoURL });
             document.getElementById("edit-chat-modal").classList.add("hidden");
             UI.toast("Updated successfully!");
         } catch (e) {
@@ -683,28 +571,24 @@ window.Fluxgram.profile = {
 
 window.Fluxgram.dash = {
     search: async () => {
-        const term = document.getElementById("search-input").value.trim().toLowerCase().replace("@", "");
+        const term = document.getElementById("search-input")?.value.trim().toLowerCase().replace("@", "");
         const resBox = document.getElementById("search-results");
         const chatList = document.getElementById("chat-list");
-
+        if (!resBox || !chatList) return;
         if (term.length < 2) {
             resBox.classList.add("hidden");
             chatList.classList.remove("hidden");
             return;
         }
-
         resBox.classList.remove("hidden");
         chatList.classList.add("hidden");
         resBox.innerHTML = `<div style="padding:15px;text-align:center;color:var(--text-muted);">Searching...</div>`;
-
         try {
             const [snapsU, snapsC] = await Promise.all([
                 getDocs(query(collection(db, "users"), where("searchKey", ">=", term), where("searchKey", "<=", term + "\uf8ff"))),
                 getDocs(query(collection(db, "chats"), where("searchKey", ">=", term), where("searchKey", "<=", term + "\uf8ff")))
             ]);
-
             resBox.innerHTML = "";
-
             snapsU.forEach((d) => {
                 if (d.id === State.currentUser.uid) return;
                 const u = d.data();
@@ -717,7 +601,6 @@ window.Fluxgram.dash = {
                         </div>
                     </div>`;
             });
-
             snapsC.forEach((d) => {
                 const c = d.data();
                 if (c.type === "group" || c.type === "channel") {
@@ -731,22 +614,16 @@ window.Fluxgram.dash = {
                         </div>`;
                 }
             });
-
-            if (resBox.innerHTML === "") {
-                resBox.innerHTML = `<div style="padding:15px;text-align:center;color:var(--text-muted);">No matches found</div>`;
-            }
-        } catch (e) {
+            if (resBox.innerHTML === "") resBox.innerHTML = `<div style="padding:15px;text-align:center;color:var(--text-muted);">No matches found</div>`;
+        } catch {
             resBox.innerHTML = `<div style="padding:15px;text-align:center;color:var(--danger);">Search failed</div>`;
         }
     },
 
     setCreateType: (type) => {
         document.getElementById("create-type").value = type;
-        const btnG = document.getElementById("btn-type-group");
-        const btnC = document.getElementById("btn-type-channel");
-
-        btnG.classList.toggle("active", type === "group");
-        btnC.classList.toggle("active", type === "channel");
+        document.getElementById("btn-type-group")?.classList.toggle("active", type === "group");
+        document.getElementById("btn-type-channel")?.classList.toggle("active", type === "channel");
     },
 
     createGroupOrChannel: async () => {
@@ -755,21 +632,15 @@ window.Fluxgram.dash = {
         const desc = document.getElementById("create-desc").value.trim();
         let username = document.getElementById("create-username").value.trim().replace("@", "");
         const previewImg = document.getElementById("create-avatar-preview");
-
         if (!name) return UI.toast("Name is required", "error");
         if (username && username.length < 6) return UI.toast("Username must be at least 6 chars", "error");
-
         UI.loader(true);
         try {
-            if (username && !(await Utils.isUsernameUnique(username))) {
-                throw new Error("This @username is already taken!");
-            }
-
+            if (username && !(await Utils.isUsernameUnique(username))) throw new Error("This @username is already taken!");
             let photoURL = null;
             if (previewImg && !previewImg.classList.contains("hidden") && previewImg.src.startsWith("data:")) {
                 photoURL = await Utils.compressToBase64(previewImg.src, 150, 0.6);
             }
-
             const newRef = await addDoc(collection(db, "chats"), {
                 type,
                 name,
@@ -785,7 +656,6 @@ window.Fluxgram.dash = {
                 unreadCount: 0,
                 typingUsers: []
             });
-
             window.location.href = `chat.html?chatId=${newRef.id}`;
         } catch (e) {
             UI.toast(e.message, "error");
@@ -797,32 +667,23 @@ window.Fluxgram.dash = {
     loadChats: () => {
         const list = document.getElementById("chat-list");
         if (!list) return;
-
         State.isInitialLoad = true;
         Fluxgram.network.updateStatusUI();
-
         const q = query(collection(db, "chats"), where("members", "array-contains", State.currentUser.uid));
-
         State.unsubChats = onSnapshot(q, async (snapshot) => {
             State.isInitialLoad = false;
             Fluxgram.network.updateStatusUI();
             list.innerHTML = "";
-
             if (snapshot.empty) {
                 list.innerHTML = `<div style="padding:30px;text-align:center;color:var(--text-muted);">No chats yet.</div>`;
                 return;
             }
-
-            const chatDocs = snapshot.docs
-                .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
-                .sort((a, b) => getMillis(b.updatedAt) - getMillis(a.updatedAt));
-
+            const chatDocs = snapshot.docs.map((s) => ({ id: s.id, ...s.data() })).sort((a, b) => getMillis(b.updatedAt) - getMillis(a.updatedAt));
             for (const data of chatDocs) {
                 const timeStr = formatTime(data.updatedAt);
                 const unread = (data.lastSender !== State.currentUser.uid && data.unreadCount > 0)
                     ? `<div class="unread-badge">${data.unreadCount}</div>`
                     : "";
-
                 if (data.type === "group" || data.type === "channel") {
                     const icon = data.type === "channel" ? "fa-bullhorn" : "fa-users";
                     list.innerHTML += `
@@ -841,14 +702,11 @@ window.Fluxgram.dash = {
                         </div>`;
                     continue;
                 }
-
                 if (!data.members || !Array.isArray(data.members)) continue;
                 const otherUid = data.members.find((id) => id !== State.currentUser.uid);
                 if (!otherUid) continue;
-
                 const otherUser = await Utils.getCachedUser(otherUid);
                 if (!otherUser) continue;
-
                 list.innerHTML += `
                     <div class="chat-item" onclick="window.location.href='chat.html?uid=${otherUid}'">
                         <div class="avatar">${Utils.renderAvatarHTML(otherUser.photoURL, otherUser.username || otherUser.name)}</div>
@@ -873,84 +731,54 @@ window.Fluxgram.chat = {
         const otherUid = UI.getParam("uid");
         const existingChatId = UI.getParam("chatId");
         const deepLink = UI.getParam("link");
-
         try {
-            if (deepLink) return await window.Fluxgram.chat.openByUsername(deepLink);
+            if (deepLink) return await Fluxgram.chat.openByUsername(deepLink);
             if (!otherUid && !existingChatId) return window.location.replace("dashboard.html");
-
             if (State.unsubActiveChat) State.unsubActiveChat();
             if (State.unsubActiveUser) State.unsubActiveUser();
 
             if (existingChatId) {
                 State.activeChatId = existingChatId;
-
                 State.unsubActiveChat = onSnapshot(doc(db, "chats", existingChatId), async (d) => {
                     if (!d.exists()) return;
                     State.activeChatData = d.data();
-
                     Utils.setText("chat-name", State.activeChatData.name || "Chat");
-                    document.getElementById("chat-avatar").innerHTML = Utils.renderAvatarHTML(
-                        State.activeChatData.photoURL,
-                        State.activeChatData.name || "C"
-                    );
-
+                    document.getElementById("chat-avatar").innerHTML = Utils.renderAvatarHTML(State.activeChatData.photoURL, State.activeChatData.name || "C");
                     const statusText = State.activeChatData.type === "channel"
                         ? "Public channel"
                         : `${(State.activeChatData.members || []).length} members`;
-
                     Utils.setText("chat-status", statusText);
-
-                    const showAdminAdd = State.activeChatData.type === "group" && State.activeChatData.admin === State.currentUser.uid;
-                    document.getElementById("btn-add-member")?.classList.toggle("hidden", !showAdminAdd);
-
+                    document.getElementById("btn-add-member")?.classList.toggle("hidden", !(State.activeChatData.type === "group" && State.activeChatData.admin === State.currentUser.uid));
                     document.getElementById("btn-call-video")?.classList.add("hidden");
                     document.getElementById("btn-call-audio")?.classList.add("hidden");
-
                     if (State.activeChatData.lastSender !== State.currentUser.uid) {
                         updateDoc(doc(db, "chats", existingChatId), { unreadCount: 0 }).catch(() => {});
                     }
-
                     Fluxgram.chat.updateTypingIndicator();
                 });
             } else {
-                const chatId = State.currentUser.uid < otherUid
-                    ? `${State.currentUser.uid}_${otherUid}`
-                    : `${otherUid}_${State.currentUser.uid}`;
-
+                const chatId = State.currentUser.uid < otherUid ? `${State.currentUser.uid}_${otherUid}` : `${otherUid}_${State.currentUser.uid}`;
                 State.activeChatId = chatId;
                 const chatRef = doc(db, "chats", chatId);
                 const chatSnap = await getDoc(chatRef);
-
                 if (!chatSnap.exists()) {
-                    await setDoc(chatRef, {
-                        type: "direct",
-                        members: [State.currentUser.uid, otherUid],
-                        updatedAt: serverTimestamp(),
-                        typingUsers: [],
-                        unreadCount: 0
-                    });
+                    await setDoc(chatRef, { type: "direct", members: [State.currentUser.uid, otherUid], updatedAt: serverTimestamp(), typingUsers: [], unreadCount: 0 });
                 } else if (chatSnap.data().lastSender !== State.currentUser.uid) {
                     await updateDoc(chatRef, { unreadCount: 0 }).catch(() => {});
                 }
-
                 State.unsubActiveChat = onSnapshot(chatRef, (d) => {
                     if (d.exists()) {
                         State.activeChatData = d.data();
                         Fluxgram.chat.updateTypingIndicator();
                     }
                 });
-
                 State.unsubActiveUser = onSnapshot(doc(db, "users", otherUid), (d) => {
                     if (!d.exists()) return;
                     State.activeChatUser = d.data();
                     Utils.setText("chat-name", State.activeChatUser.username || State.activeChatUser.name || "User");
                     Utils.setText("chat-status", Utils.formatLastSeen(State.activeChatUser));
                     document.getElementById("chat-status")?.classList.toggle("online", !!State.activeChatUser.isOnline);
-                    document.getElementById("chat-avatar").innerHTML = Utils.renderAvatarHTML(
-                        State.activeChatUser.photoURL,
-                        State.activeChatUser.username || State.activeChatUser.name || "U"
-                    );
-
+                    document.getElementById("chat-avatar").innerHTML = Utils.renderAvatarHTML(State.activeChatUser.photoURL, State.activeChatUser.username || State.activeChatUser.name || "U");
                     document.getElementById("btn-add-member")?.classList.add("hidden");
                     document.getElementById("btn-call-video")?.classList.remove("hidden");
                     document.getElementById("btn-call-audio")?.classList.remove("hidden");
@@ -963,32 +791,28 @@ window.Fluxgram.chat = {
                     setTimeout(() => {
                         const container = document.getElementById("messages-container");
                         if (container) container.scrollTop = container.scrollHeight;
-                    }, 200);
+                    }, 180);
                 });
-
                 msgInput.addEventListener("input", () => {
                     UI.autoResize(msgInput);
                     Fluxgram.chat.toggleSendVoiceButtons();
                     Fluxgram.chat.markTyping();
                 });
-
                 msgInput.addEventListener("keypress", (e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                         e.preventDefault();
-                        window.Fluxgram.chat.send();
+                        Fluxgram.chat.send();
                     }
                 });
             }
-
-            window.Fluxgram.chat.loadMessages();
-        } catch (error) {
+            Fluxgram.chat.loadMessages();
+        } catch {
             UI.toast("Failed to load chat", "error");
         }
     },
 
     toggleSendVoiceButtons: () => {
-        const msgInput = document.getElementById("msg-input");
-        const hasText = !!msgInput?.value.trim();
+        const hasText = !!document.getElementById("msg-input")?.value.trim();
         document.getElementById("btn-send-text")?.classList.toggle("hidden", !hasText);
         document.getElementById("btn-record-voice")?.classList.toggle("hidden", hasText);
     },
@@ -996,105 +820,74 @@ window.Fluxgram.chat = {
     markTyping: async () => {
         if (!State.activeChatId || !State.currentUser?.uid) return;
         const chatRef = doc(db, "chats", State.activeChatId);
-
         try {
-            await updateDoc(chatRef, {
-                typingUsers: arrayUnion(State.currentUser.uid)
-            });
-        } catch (e) {}
-
+            await updateDoc(chatRef, { typingUsers: arrayUnion(State.currentUser.uid) });
+        } catch {}
         clearTimeout(State.typingTimeout);
         State.typingTimeout = setTimeout(async () => {
-            try {
-                await updateDoc(chatRef, {
-                    typingUsers: arrayRemove(State.currentUser.uid)
-                });
-            } catch (e) {}
+            try { await updateDoc(chatRef, { typingUsers: arrayRemove(State.currentUser.uid) }); } catch {}
         }, 1400);
     },
 
     stopTypingNow: async () => {
         if (!State.activeChatId || !State.currentUser?.uid) return;
-        try {
-            await updateDoc(doc(db, "chats", State.activeChatId), {
-                typingUsers: arrayRemove(State.currentUser.uid)
-            });
-        } catch (e) {}
+        try { await updateDoc(doc(db, "chats", State.activeChatId), { typingUsers: arrayRemove(State.currentUser.uid) }); } catch {}
     },
 
     updateTypingIndicator: async () => {
         const indicator = document.getElementById("typing-indicator");
         const textEl = document.getElementById("typing-text");
         if (!indicator || !textEl || !State.activeChatData) return;
-
         const typingUsers = Array.isArray(State.activeChatData.typingUsers)
             ? State.activeChatData.typingUsers.filter((uid) => uid !== State.currentUser.uid)
             : [];
-
         if (typingUsers.length === 0) {
             indicator.classList.add("hidden");
             return;
         }
-
         if (State.activeChatData.type === "direct") {
             textEl.innerText = "Typing...";
             indicator.classList.remove("hidden");
             return;
         }
-
-        const firstUid = typingUsers[0];
-        const firstUser = await Utils.getCachedUser(firstUid);
-        const name = firstUser?.username || firstUser?.name || "Someone";
-        textEl.innerText = `${name} is typing...`;
+        const firstUser = await Utils.getCachedUser(typingUsers[0]);
+        textEl.innerText = `${firstUser?.username || firstUser?.name || "Someone"} is typing...`;
         indicator.classList.remove("hidden");
     },
 
     loadMessages: () => {
         const container = document.getElementById("messages-container");
         if (!container) return;
-
         if (State.unsubMessages) State.unsubMessages();
-
         const q = query(collection(db, `chats/${State.activeChatId}/messages`), orderBy("timestamp", "asc"));
-
         State.unsubMessages = onSnapshot(q, async (snapshot) => {
             window._localMessages = {};
             container.innerHTML = "";
-
             let lastDateStr = "";
             let batch = writeBatch(db);
             let hasUnreadMessages = false;
-
             for (const docSnap of snapshot.docs) {
                 const msgId = docSnap.id;
                 const msg = docSnap.data();
                 window._localMessages[msgId] = msg;
-
                 if (msg.deletedFor && msg.deletedFor.includes(State.currentUser.uid)) continue;
-
                 if (msg.senderId !== State.currentUser.uid && msg.status !== "read") {
                     batch.update(docSnap.ref, { status: "read" });
                     hasUnreadMessages = true;
                 }
-
                 const isMe = msg.senderId === State.currentUser.uid;
                 const timeStr = formatTime(msg.timestamp);
                 const dateStr = formatDate(msg.timestamp);
-
                 if (dateStr && dateStr !== lastDateStr) {
                     container.innerHTML += `<div class="date-divider"><span>${dateStr}</span></div>`;
                     lastDateStr = dateStr;
                 }
-
                 let senderNameHTML = "";
                 if (!isMe && State.activeChatData && (State.activeChatData.type === "group" || State.activeChatData.type === "channel")) {
                     const sender = await Utils.getCachedUser(msg.senderId);
-                    const senderName = sender?.username || sender?.name || "User";
-                    senderNameHTML = `<div class="msg-sender">${Utils.escapeHTML(senderName)}</div>`;
+                    senderNameHTML = `<div class="msg-sender">${Utils.escapeHTML(sender?.username || sender?.name || "User")}</div>`;
                 }
-
                 let contentHTML = "";
-
                 if (msg.type === "call") {
                     contentHTML = `<div class="call-log ${msg.status === "missed" ? "missed" : "success"}"><i class="fas fa-phone"></i> ${Utils.escapeHTML(msg.text || "Call")}</div>`;
                 } else {
@@ -1105,19 +898,15 @@ window.Fluxgram.chat = {
                                 <div class="replied-text">${Utils.escapeHTML(msg.replyTo.text || "")}</div>
                             </div>`;
                     }
-
                     if (msg.text) contentHTML += Utils.parseMentionsSafe(msg.text);
                     if (msg.image) contentHTML += `<img src="${msg.image}" class="chat-img" onclick="event.stopPropagation(); window.open('${msg.image}')">`;
                     if (msg.audio) contentHTML += `<audio src="${msg.audio}" controls class="chat-audio" onclick="event.stopPropagation()"></audio>`;
                 }
-
-                let tickHTML = "";
-                if (isMe && msg.type !== "call") {
-                    tickHTML = msg.status === "read"
+                const tickHTML = isMe && msg.type !== "call"
+                    ? (msg.status === "read"
                         ? `<span class="msg-ticks read"><i class="fas fa-check-double"></i></span>`
-                        : `<span class="msg-ticks"><i class="fas fa-check"></i></span>`;
-                }
-
+                        : `<span class="msg-ticks"><i class="fas fa-check"></i></span>`)
+                    : "";
                 container.innerHTML += `
                     <div class="msg-row ${isMe ? "msg-tx" : "msg-rx"}">
                         <div class="msg-bubble" onclick="Fluxgram.chat.showMsgMenu('${msgId}')">
@@ -1127,12 +916,9 @@ window.Fluxgram.chat = {
                         </div>
                     </div>`;
             }
-
             if (hasUnreadMessages) batch.commit().catch(() => {});
             Utils.bindMentionClicks();
-            setTimeout(() => {
-                container.scrollTop = container.scrollHeight;
-            }, 80);
+            requestAnimationFrame(() => { container.scrollTop = container.scrollHeight; });
         });
     },
 
@@ -1140,36 +926,20 @@ window.Fluxgram.chat = {
         State.selectedMsgId = msgId;
         const msg = window._localMessages[msgId];
         if (!msg || msg.type === "call") return;
-
-        const isMe = msg.senderId === State.currentUser.uid;
-        const isAdmin = State.activeChatData && State.activeChatData.admin === State.currentUser.uid;
-
-        const modal = document.getElementById("msg-action-modal");
-        const btnEveryone = document.getElementById("btn-delete-everyone");
-
-        if (isMe || isAdmin) btnEveryone.classList.remove("hidden");
-        else btnEveryone.classList.add("hidden");
-
-        modal.classList.remove("hidden");
+        const canDeleteForEveryone = msg.senderId === State.currentUser.uid || (State.activeChatData && State.activeChatData.admin === State.currentUser.uid);
+        document.getElementById("btn-delete-everyone")?.classList.toggle("hidden", !canDeleteForEveryone);
+        document.getElementById("msg-action-modal")?.classList.remove("hidden");
     },
 
     initReply: () => {
         const msgId = State.selectedMsgId;
         const msg = window._localMessages[msgId];
         if (!msg) return;
-
         document.getElementById("msg-action-modal")?.classList.add("hidden");
-
         const isMe = msg.senderId === State.currentUser.uid;
-        let senderName = isMe ? "You" : (State.activeChatUser?.username || "User");
-        let previewText = msg.text || (msg.image ? "📸 Image" : msg.audio ? "🎤 Voice" : "Message");
-
-        State.replyingTo = {
-            msgId,
-            text: previewText,
-            senderName
-        };
-
+        const senderName = isMe ? "You" : (State.activeChatUser?.username || "User");
+        const previewText = msg.text || (msg.image ? "📸 Image" : msg.audio ? "🎤 Voice" : "Message");
+        State.replyingTo = { msgId, text: previewText, senderName };
         Utils.setText("reply-preview-name", senderName);
         Utils.setText("reply-preview-text", previewText);
         document.getElementById("reply-preview-bar")?.classList.remove("hidden");
@@ -1184,21 +954,17 @@ window.Fluxgram.chat = {
     executeDelete: async (type) => {
         const msgId = State.selectedMsgId;
         if (!msgId) return;
-
         document.getElementById("msg-action-modal")?.classList.add("hidden");
-
         try {
             const msgRef = doc(db, `chats/${State.activeChatId}/messages`, msgId);
             if (type === "everyone") {
                 await deleteDoc(msgRef);
                 UI.toast("Message deleted");
-            } else if (type === "me") {
-                await updateDoc(msgRef, {
-                    deletedFor: arrayUnion(State.currentUser.uid)
-                });
+            } else {
+                await updateDoc(msgRef, { deletedFor: arrayUnion(State.currentUser.uid) });
                 UI.toast("Deleted for you");
             }
-        } catch (e) {
+        } catch {
             UI.toast("Failed to delete", "error");
         }
     },
@@ -1206,33 +972,21 @@ window.Fluxgram.chat = {
     send: async () => {
         const input = document.getElementById("msg-input");
         if (!input) return;
-
         const text = input.value.trim();
         if (!text || !State.activeChatId) return;
-
         input.value = "";
         UI.autoResize(input);
         Fluxgram.chat.toggleSendVoiceButtons();
         Fluxgram.chat.stopTypingNow();
-
-        const msgData = {
-            text,
-            senderId: State.currentUser.uid,
-            timestamp: serverTimestamp(),
-            status: "sent"
-        };
-
+        const msgData = { text, senderId: State.currentUser.uid, timestamp: serverTimestamp(), status: "sent" };
         if (State.replyingTo) {
             msgData.replyTo = State.replyingTo;
             Fluxgram.chat.cancelReply();
         }
-
         try {
             await addDoc(collection(db, `chats/${State.activeChatId}/messages`), msgData);
-
             const snap = await getDoc(doc(db, "chats", State.activeChatId));
-            let unread = snap.exists() ? (snap.data().unreadCount || 0) : 0;
-
+            const unread = snap.exists() ? (snap.data().unreadCount || 0) : 0;
             await setDoc(doc(db, "chats", State.activeChatId), {
                 lastMessage: text,
                 lastSender: State.currentUser.uid,
@@ -1248,30 +1002,25 @@ window.Fluxgram.chat = {
         const file = e.target.files[0];
         if (!file) return;
         UI.loader(true);
-
         try {
             const reader = new FileReader();
             reader.readAsDataURL(file);
-
             reader.onloadend = async () => {
-                const compressedImg = await Utils.compressToBase64(reader.result, 600, 0.7);
-
+                const compressedImg = await Utils.compressToBase64(reader.result, 700, 0.72);
                 await addDoc(collection(db, `chats/${State.activeChatId}/messages`), {
                     image: compressedImg,
                     senderId: State.currentUser.uid,
                     timestamp: serverTimestamp(),
                     status: "sent"
                 });
-
                 await setDoc(doc(db, "chats", State.activeChatId), {
                     lastMessage: "📸 Image",
                     lastSender: State.currentUser.uid,
                     updatedAt: serverTimestamp()
                 }, { merge: true });
-
                 UI.loader(false);
             };
-        } catch (err) {
+        } catch {
             UI.toast("Image send failed", "error");
             UI.loader(false);
         }
@@ -1282,41 +1031,29 @@ window.Fluxgram.chat = {
         window._startX = e.type.includes("touch") ? e.touches[0].clientX : e.clientX;
         window._isRecordingCancelled = false;
         window._recordSeconds = 0;
-
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             window._voiceStream = stream;
             window._voiceRecorder = new MediaRecorder(stream);
             window._voiceChunks = [];
-
-            window._voiceRecorder.ondataavailable = (ev) => {
-                if (ev.data.size > 0) window._voiceChunks.push(ev.data);
-            };
-
+            window._voiceRecorder.ondataavailable = (ev) => { if (ev.data.size > 0) window._voiceChunks.push(ev.data); };
             window._voiceRecorder.onstop = async () => {
                 if (window._voiceStream) window._voiceStream.getTracks().forEach((t) => t.stop());
                 clearInterval(window._recordTimer);
-
                 document.getElementById("recording-ui")?.classList.add("hidden");
                 document.getElementById("recording-ui").style.display = "none";
                 document.body.classList.remove("recording-active");
-
-                if (window._isRecordingCancelled) return;
-                if (window._recordSeconds < 1) return;
-
+                if (window._isRecordingCancelled || window._recordSeconds < 1) return;
                 const audioBlob = new Blob(window._voiceChunks);
                 const reader = new FileReader();
                 reader.readAsDataURL(audioBlob);
-
                 reader.onloadend = async () => {
-                    const base64Audio = reader.result;
                     await addDoc(collection(db, `chats/${State.activeChatId}/messages`), {
-                        audio: base64Audio,
+                        audio: reader.result,
                         senderId: State.currentUser.uid,
                         timestamp: serverTimestamp(),
                         status: "sent"
                     });
-
                     await setDoc(doc(db, "chats", State.activeChatId), {
                         lastMessage: "🎤 Voice Message",
                         lastSender: State.currentUser.uid,
@@ -1324,45 +1061,37 @@ window.Fluxgram.chat = {
                     }, { merge: true });
                 };
             };
-
             document.getElementById("recording-ui")?.classList.remove("hidden");
             document.getElementById("recording-ui").style.display = "flex";
             document.body.classList.add("recording-active");
-
             const recTime = document.getElementById("record-time");
             recTime.innerText = "0:00";
-
             window._recordTimer = setInterval(() => {
                 window._recordSeconds++;
-                let m = Math.floor(window._recordSeconds / 60);
-                let s = window._recordSeconds % 60;
+                const m = Math.floor(window._recordSeconds / 60);
+                const s = window._recordSeconds % 60;
                 recTime.innerText = `${m}:${s < 10 ? "0" + s : s}`;
             }, 1000);
-
             window._voiceRecorder.start(200);
-        } catch (err) {
+        } catch {
             UI.toast("Microphone access denied!", "error");
         }
     },
 
     stopVoice: () => {
-        if (window._voiceRecorder && window._voiceRecorder.state !== "inactive") {
-            window._voiceRecorder.stop();
-        }
+        if (window._voiceRecorder && window._voiceRecorder.state !== "inactive") window._voiceRecorder.stop();
     },
 
     slideVoice: (e) => {
         if (!window._voiceRecorder || window._voiceRecorder.state === "inactive") return;
-        let currentX = e.type.includes("touch") ? e.touches[0].clientX : e.clientX;
+        const currentX = e.type.includes("touch") ? e.touches[0].clientX : e.clientX;
         if (window._startX - currentX > 60) {
             window._isRecordingCancelled = true;
             window._voiceRecorder.stop();
         }
     },
 
-    toggleEmoji: () => {
-        document.getElementById("emoji-panel")?.classList.toggle("hidden");
-    },
+    toggleEmoji: () => document.getElementById("emoji-panel")?.classList.toggle("hidden"),
 
     addEmoji: (emoji) => {
         const input = document.getElementById("msg-input");
@@ -1376,11 +1105,8 @@ window.Fluxgram.chat = {
     openByUsername: async (username) => {
         UI.loader(true);
         const key = username.toLowerCase().replace("@", "");
-
         try {
-            const qU = query(collection(db, "users"), where("searchKey", "==", key));
-            const snapU = await getDocs(qU);
-
+            const snapU = await getDocs(query(collection(db, "users"), where("searchKey", "==", key)));
             if (!snapU.empty) {
                 const uId = snapU.docs[0].id;
                 if (uId === State.currentUser.uid) {
@@ -1391,64 +1117,45 @@ window.Fluxgram.chat = {
                 window.location.href = `chat.html?uid=${uId}`;
                 return;
             }
-
-            const qC = query(collection(db, "chats"), where("searchKey", "==", key));
-            const snapC = await getDocs(qC);
-
+            const snapC = await getDocs(query(collection(db, "chats"), where("searchKey", "==", key)));
             if (!snapC.empty) {
                 const chatId = snapC.docs[0].id;
                 if (!snapC.docs[0].data().members.includes(State.currentUser.uid)) {
-                    await updateDoc(doc(db, "chats", chatId), {
-                        members: arrayUnion(State.currentUser.uid)
-                    });
+                    await updateDoc(doc(db, "chats", chatId), { members: arrayUnion(State.currentUser.uid) });
                     UI.toast("Joined successfully!");
                 }
                 window.location.href = `chat.html?chatId=${chatId}`;
                 return;
             }
-
             UI.toast("Username not found!", "error");
-            if (window.location.pathname.endsWith("chat.html") && !State.activeChatId) {
-                window.location.replace("dashboard.html");
-            }
-        } catch (e) {
+            if (window.location.pathname.endsWith("chat.html") && !State.activeChatId) window.location.replace("dashboard.html");
+        } catch {
             UI.toast("Search failed", "error");
         }
-
         UI.loader(false);
     },
 
     copyLink: () => {
         const u = State.activeChatUser?.username || State.activeChatData?.username;
-        if (u) {
-            navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?link=${u}`);
-            UI.toast("Shareable link copied!");
-        } else {
-            UI.toast("This chat doesn't have a public username.", "error");
-        }
+        if (!u) return UI.toast("This chat doesn't have a public username.", "error");
+        navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?link=${u}`);
+        UI.toast("Shareable link copied!");
     },
 
     promptAddMember: async () => {
         const username = prompt("Enter exact @username to add:");
         if (!username) return;
-
         UI.loader(true);
         try {
-            const q = query(collection(db, "users"), where("searchKey", "==", username.replace("@", "").toLowerCase()));
-            const snaps = await getDocs(q);
-
+            const snaps = await getDocs(query(collection(db, "users"), where("searchKey", "==", username.replace("@", "").toLowerCase())));
             if (snaps.empty) {
                 UI.toast("User not found", "error");
                 UI.loader(false);
                 return;
             }
-
-            await updateDoc(doc(db, "chats", State.activeChatId), {
-                members: arrayUnion(snaps.docs[0].id)
-            });
-
+            await updateDoc(doc(db, "chats", State.activeChatId), { members: arrayUnion(snaps.docs[0].id) });
             UI.toast("Member added successfully!", "success");
-        } catch (e) {
+        } catch {
             UI.toast("Failed to add member", "error");
         } finally {
             UI.loader(false);
@@ -1456,153 +1163,104 @@ window.Fluxgram.chat = {
     }
 };
 
-const servers = {
-    iceServers: [{ urls: ["stun:stun1.l.google.com:19302", "stun:stun2.l.google.com:19302"] }]
-};
+const servers = { iceServers: [{ urls: ["stun:stun1.l.google.com:19302", "stun:stun2.l.google.com:19302"] }] };
 
 window.Fluxgram.call = {
     clearCallListeners: () => {
-        State.callUnsubs.forEach((u) => {
-            try { u(); } catch (e) {}
-        });
+        State.callUnsubs.forEach((u) => { try { u(); } catch {} });
         State.callUnsubs = [];
     },
 
     startCall: async (type) => {
         if (!State.activeChatUser) return;
-
         State.callRole = "caller";
         State.callType = type;
         const callDoc = doc(collection(db, "calls"));
         State.callDocId = callDoc.id;
-
         const callScreen = document.getElementById("call-screen");
         if (!callScreen) return;
-
         callScreen.classList.remove("hidden");
         Utils.setText("callName", State.activeChatUser.name || State.activeChatUser.username || "User");
         Utils.setText("callStatus", "Calling...");
         document.getElementById("call-controls-active")?.classList.remove("hidden");
         document.getElementById("call-controls-incoming")?.classList.add("hidden");
         document.getElementById("localVideo")?.classList.add("hidden");
-
         try {
-            window.localStream = await navigator.mediaDevices.getUserMedia({
-                video: type === "video",
-                audio: true
-            });
-
+            window.localStream = await navigator.mediaDevices.getUserMedia({ video: type === "video", audio: true });
             if (type === "video") {
                 document.getElementById("localVideo").srcObject = window.localStream;
                 document.getElementById("call-video-toggle").innerHTML = '<i class="fas fa-video"></i>';
             } else {
                 document.getElementById("call-video-toggle").innerHTML = '<i class="fas fa-video-slash" style="color:var(--danger);"></i>';
             }
-
             window.pc = new RTCPeerConnection(servers);
             window.localStream.getTracks().forEach((track) => window.pc.addTrack(track, window.localStream));
-
             window.pc.ontrack = (event) => {
                 document.getElementById("remoteVideo").srcObject = event.streams[0];
                 Utils.setText("callStatus", "Connected");
                 if (State.callType === "video") document.getElementById("localVideo")?.classList.remove("hidden");
             };
-
             const offerCandidates = collection(callDoc, "offerCandidates");
-            window.pc.onicecandidate = (event) => {
-                if (event.candidate) addDoc(offerCandidates, event.candidate.toJSON());
-            };
-
+            window.pc.onicecandidate = (event) => { if (event.candidate) addDoc(offerCandidates, event.candidate.toJSON()); };
             const offerDescription = await window.pc.createOffer();
             await window.pc.setLocalDescription(offerDescription);
-
             await setDoc(callDoc, {
-                offer: {
-                    type: offerDescription.type,
-                    sdp: offerDescription.sdp
-                },
+                offer: { type: offerDescription.type, sdp: offerDescription.sdp },
                 callerId: State.currentUser.uid,
                 receiverId: State.activeChatUser.uid,
                 type,
                 status: "ringing"
             });
-
             Fluxgram.call.clearCallListeners();
-
             State.callUnsubs.push(onSnapshot(callDoc, (snapshot) => {
                 const data = snapshot.data();
                 if (!window.pc.currentRemoteDescription && data?.answer) {
                     window.pc.setRemoteDescription(new RTCSessionDescription(data.answer));
                     State.startTime = Date.now();
                 }
-                if (data?.status === "ended") {
-                    Fluxgram.call.endCallLocal(true);
-                }
+                if (data?.status === "ended") Fluxgram.call.endCallLocal(true);
             }));
-
             State.callUnsubs.push(onSnapshot(collection(callDoc, "answerCandidates"), (snapshot) => {
                 snapshot.docChanges().forEach((change) => {
-                    if (change.type === "added") {
-                        window.pc.addIceCandidate(new RTCIceCandidate(change.doc.data()));
-                    }
+                    if (change.type === "added") window.pc.addIceCandidate(new RTCIceCandidate(change.doc.data()));
                 });
             }));
-        } catch (err) {
+        } catch {
             UI.toast("Microphone/Camera access denied.", "error");
-            window.Fluxgram.call.endCallLocal(false);
+            Fluxgram.call.endCallLocal(false);
         }
     },
 
     listenForCalls: () => {
         const callScreen = document.getElementById("call-screen");
         if (!callScreen || !State.currentUser) return;
-
-        onSnapshot(
-            query(
-                collection(db, "calls"),
-                where("receiverId", "==", State.currentUser.uid),
-                where("status", "==", "ringing")
-            ),
-            (snapshot) => {
-                snapshot.docChanges().forEach(async (change) => {
-                    if (change.type !== "added") return;
-
-                    State.callRole = "receiver";
-                    const callData = change.doc.data();
-                    State.callDocId = change.doc.id;
-                    State.callType = callData.type;
-
-                    const callerDoc = await getDoc(doc(db, "users", callData.callerId));
-                    const callerName = callerDoc.exists()
-                        ? (callerDoc.data().name || callerDoc.data().username || "Unknown")
-                        : "Unknown";
-
-                    callScreen.classList.remove("hidden");
-                    Utils.setText("callName", callerName);
-                    Utils.setText("callStatus", `Incoming ${callData.type} call...`);
-
-                    document.getElementById("call-controls-active")?.classList.add("hidden");
-                    document.getElementById("call-controls-incoming")?.classList.remove("hidden");
-                    document.getElementById("localVideo")?.classList.add("hidden");
-                });
-            }
-        );
+        onSnapshot(query(collection(db, "calls"), where("receiverId", "==", State.currentUser.uid), where("status", "==", "ringing")), (snapshot) => {
+            snapshot.docChanges().forEach(async (change) => {
+                if (change.type !== "added") return;
+                State.callRole = "receiver";
+                const callData = change.doc.data();
+                State.callDocId = change.doc.id;
+                State.callType = callData.type;
+                const callerDoc = await getDoc(doc(db, "users", callData.callerId));
+                const callerName = callerDoc.exists() ? (callerDoc.data().name || callerDoc.data().username || "Unknown") : "Unknown";
+                callScreen.classList.remove("hidden");
+                Utils.setText("callName", callerName);
+                Utils.setText("callStatus", `Incoming ${callData.type} call...`);
+                document.getElementById("call-controls-active")?.classList.add("hidden");
+                document.getElementById("call-controls-incoming")?.classList.remove("hidden");
+                document.getElementById("localVideo")?.classList.add("hidden");
+            });
+        });
     },
 
     acceptCall: async () => {
         document.getElementById("call-controls-active")?.classList.remove("hidden");
         document.getElementById("call-controls-incoming")?.classList.add("hidden");
         Utils.setText("callStatus", "Connecting...");
-
         const callDocRef = doc(db, "calls", State.callDocId);
         const callData = (await getDoc(callDocRef)).data();
-
         try {
-            window.localStream = await navigator.mediaDevices.getUserMedia({
-                video: State.callType === "video",
-                audio: true
-            });
-
+            window.localStream = await navigator.mediaDevices.getUserMedia({ video: State.callType === "video", audio: true });
             if (State.callType === "video") {
                 document.getElementById("localVideo").srcObject = window.localStream;
                 document.getElementById("localVideo")?.classList.remove("hidden");
@@ -1610,89 +1268,53 @@ window.Fluxgram.call = {
             } else {
                 document.getElementById("call-video-toggle").innerHTML = '<i class="fas fa-video-slash" style="color:var(--danger);"></i>';
             }
-
             window.pc = new RTCPeerConnection(servers);
             window.localStream.getTracks().forEach((track) => window.pc.addTrack(track, window.localStream));
-
             window.pc.ontrack = (event) => {
                 document.getElementById("remoteVideo").srcObject = event.streams[0];
                 Utils.setText("callStatus", "Connected");
             };
-
             const answerCandidates = collection(callDocRef, "answerCandidates");
-            window.pc.onicecandidate = (event) => {
-                if (event.candidate) addDoc(answerCandidates, event.candidate.toJSON());
-            };
-
+            window.pc.onicecandidate = (event) => { if (event.candidate) addDoc(answerCandidates, event.candidate.toJSON()); };
             await window.pc.setRemoteDescription(new RTCSessionDescription(callData.offer));
             const answerDescription = await window.pc.createAnswer();
             await window.pc.setLocalDescription(answerDescription);
-
-            await updateDoc(callDocRef, {
-                answer: {
-                    type: answerDescription.type,
-                    sdp: answerDescription.sdp
-                },
-                status: "connected"
-            });
-
+            await updateDoc(callDocRef, { answer: { type: answerDescription.type, sdp: answerDescription.sdp }, status: "connected" });
             State.startTime = Date.now();
             Fluxgram.call.clearCallListeners();
-
             State.callUnsubs.push(onSnapshot(collection(callDocRef, "offerCandidates"), (snapshot) => {
                 snapshot.docChanges().forEach((change) => {
-                    if (change.type === "added") {
-                        window.pc.addIceCandidate(new RTCIceCandidate(change.doc.data()));
-                    }
+                    if (change.type === "added") window.pc.addIceCandidate(new RTCIceCandidate(change.doc.data()));
                 });
             }));
-
             State.callUnsubs.push(onSnapshot(callDocRef, (snap) => {
-                if (snap.data()?.status === "ended") window.Fluxgram.call.endCallLocal(true);
+                if (snap.data()?.status === "ended") Fluxgram.call.endCallLocal(true);
             }));
-        } catch (err) {
+        } catch {
             UI.toast("Microphone/Camera access denied.", "error");
-            window.Fluxgram.call.endCall();
+            Fluxgram.call.endCall();
         }
     },
 
     endCall: async () => {
         if (State.callDocId) {
-            try {
-                await updateDoc(doc(db, "calls", State.callDocId), { status: "ended" });
-            } catch (e) {}
+            try { await updateDoc(doc(db, "calls", State.callDocId), { status: "ended" }); } catch {}
         }
-        window.Fluxgram.call.endCallLocal(true);
+        Fluxgram.call.endCallLocal(true);
     },
 
     endCallLocal: async (writeHistory = false) => {
         Fluxgram.call.clearCallListeners();
-
-        if (window.pc) {
-            window.pc.close();
-            window.pc = null;
-        }
-
-        if (window.localStream) {
-            window.localStream.getTracks().forEach((t) => t.stop());
-            window.localStream = null;
-        }
-
+        if (window.pc) { window.pc.close(); window.pc = null; }
+        if (window.localStream) { window.localStream.getTracks().forEach((t) => t.stop()); window.localStream = null; }
         const remoteVideo = document.getElementById("remoteVideo");
         const localVideo = document.getElementById("localVideo");
-
         if (remoteVideo) remoteVideo.srcObject = null;
-        if (localVideo) {
-            localVideo.srcObject = null;
-            localVideo.classList.add("hidden");
-        }
-
+        if (localVideo) { localVideo.srcObject = null; localVideo.classList.add("hidden"); }
         document.getElementById("call-screen")?.classList.add("hidden");
-
         if (writeHistory && State.activeChatId && State.callRole === "caller") {
             let durationText = "Missed Call";
             let callStatus = "missed";
-
             if (State.startTime) {
                 const totalSeconds = Math.floor((Date.now() - State.startTime) / 1000);
                 const mins = Math.floor(totalSeconds / 60);
@@ -1700,7 +1322,6 @@ window.Fluxgram.call = {
                 durationText = `Call ended (${mins}m ${secs}s)`;
                 callStatus = "success";
             }
-
             try {
                 await addDoc(collection(db, `chats/${State.activeChatId}/messages`), {
                     type: "call",
@@ -1709,9 +1330,8 @@ window.Fluxgram.call = {
                     senderId: State.currentUser.uid,
                     timestamp: serverTimestamp()
                 });
-            } catch (e) {}
+            } catch {}
         }
-
         State.callDocId = null;
         State.startTime = null;
         State.callRole = null;
@@ -1722,7 +1342,6 @@ window.Fluxgram.call = {
         if (!window.localStream) return;
         const audioTrack = window.localStream.getAudioTracks()[0];
         audioTrack.enabled = !audioTrack.enabled;
-
         const micIcon = document.getElementById("mic-icon");
         if (micIcon) {
             micIcon.className = audioTrack.enabled ? "fas fa-microphone" : "fas fa-microphone-slash";
@@ -1733,35 +1352,19 @@ window.Fluxgram.call = {
     toggleVideo: () => {
         if (!window.localStream) return;
         const videoTracks = window.localStream.getVideoTracks();
-
-        if (videoTracks.length > 0) {
-            const videoTrack = videoTracks[0];
-            videoTrack.enabled = !videoTrack.enabled;
-            const btn = document.getElementById("call-video-toggle");
-
-            if (btn) {
-                btn.innerHTML = videoTrack.enabled
-                    ? '<i class="fas fa-video"></i>'
-                    : '<i class="fas fa-video-slash" style="color:var(--danger);"></i>';
-            }
-
-            document.getElementById("localVideo")?.classList.toggle("hidden", !videoTrack.enabled);
-        } else {
-            UI.toast("Cannot enable video in an audio call.", "error");
-        }
+        if (videoTracks.length === 0) return UI.toast("Cannot enable video in an audio call.", "error");
+        const track = videoTracks[0];
+        track.enabled = !track.enabled;
+        const btn = document.getElementById("call-video-toggle");
+        if (btn) btn.innerHTML = track.enabled ? '<i class="fas fa-video"></i>' : '<i class="fas fa-video-slash" style="color:var(--danger);"></i>';
+        document.getElementById("localVideo")?.classList.toggle("hidden", !track.enabled);
     },
 
-    toggleSpeaker: () => {
-        UI.toast("Speaker toggle available in native app.", "success");
-    }
+    toggleSpeaker: () => UI.toast("Speaker toggle available in native app.", "success")
 };
 
 document.addEventListener("DOMContentLoaded", () => {
-    const btnReply = document.getElementById("btn-reply-msg");
-    const btnDeleteEveryone = document.getElementById("btn-delete-everyone");
-    const btnDeleteMe = document.getElementById("btn-delete-me");
-
-    if (btnReply) btnReply.addEventListener("click", () => Fluxgram.chat.initReply());
-    if (btnDeleteEveryone) btnDeleteEveryone.addEventListener("click", () => Fluxgram.chat.executeDelete("everyone"));
-    if (btnDeleteMe) btnDeleteMe.addEventListener("click", () => Fluxgram.chat.executeDelete("me"));
+    document.getElementById("btn-reply-msg")?.addEventListener("click", () => Fluxgram.chat.initReply());
+    document.getElementById("btn-delete-everyone")?.addEventListener("click", () => Fluxgram.chat.executeDelete("everyone"));
+    document.getElementById("btn-delete-me")?.addEventListener("click", () => Fluxgram.chat.executeDelete("me"));
 });
