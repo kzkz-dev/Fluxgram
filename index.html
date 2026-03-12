@@ -82,28 +82,59 @@
         <div id="login-form">
           <input type="email" id="login-email" class="auth-input" placeholder="Email Address" required>
           <input type="password" id="login-password" class="auth-input" placeholder="Password" required>
-          <button class="auth-btn" onclick="FluxgramV41.auth.login()">Sign In</button>
-          <div class="auth-link" onclick="FluxgramV41.ui.toggleForms('signup')">Create an Account</div>
-          <div class="auth-link muted-link" onclick="FluxgramV41.ui.toggleForms('reset')">Forgot Password?</div>
+          <button class="auth-btn" onclick="FluxgramV41?.auth?.login()">Sign In</button>
+          <div class="auth-link" onclick="FluxgramV41?.ui?.toggleForms('signup')">Create an Account</div>
+          <div class="auth-link muted-link" onclick="FluxgramV41?.ui?.toggleForms('reset')">Forgot Password?</div>
         </div>
 
         <div id="signup-form" class="hidden">
           <input type="text" id="signup-username" class="auth-input" placeholder="Username (Unique)" required>
           <input type="email" id="signup-email" class="auth-input" placeholder="Email Address" required>
           <input type="password" id="signup-password" class="auth-input" placeholder="Password (Min 6 chars)" required>
-          <button class="auth-btn" onclick="FluxgramV41.auth.signup()">Sign Up</button>
-          <div class="auth-link" onclick="FluxgramV41.ui.toggleForms('login')">Already have an account? Sign In</div>
+          <button class="auth-btn" onclick="FluxgramV41?.auth?.signup()">Sign Up</button>
+          <div class="auth-link" onclick="FluxgramV41?.ui?.toggleForms('login')">Already have an account? Sign In</div>
         </div>
 
         <div id="reset-form" class="hidden">
           <input type="email" id="reset-email" class="auth-input" placeholder="Enter Email Address" required>
-          <button class="auth-btn" onclick="FluxgramV41.auth.reset()">Send Reset Link</button>
-          <div class="auth-link" onclick="FluxgramV41.ui.toggleForms('login')">Back to Sign In</div>
+          <button class="auth-btn" onclick="FluxgramV41?.auth?.reset()">Send Reset Link</button>
+          <div class="auth-link" onclick="FluxgramV41?.ui?.toggleForms('login')">Back to Sign In</div>
         </div>
       </div>
     </div>
   </div>
 
-  <script type="module" src="./js/main.js"></script>
+  <script type="module">
+    const hideSplash = () => {
+      const splash = document.getElementById("splash-screen");
+      if (!splash) return;
+      splash.style.opacity = "0";
+      setTimeout(() => {
+        splash.style.visibility = "hidden";
+      }, 450);
+    };
+
+    window.addEventListener("load", () => {
+      setTimeout(hideSplash, 2200);
+    });
+
+    window.addEventListener("error", () => {
+      hideSplash();
+    });
+
+    import("./js/main.js")
+      .then(() => {})
+      .catch((err) => {
+        console.error("main.js load failed:", err);
+        hideSplash();
+        const toastBox = document.getElementById("toast-container");
+        if (toastBox) {
+          const t = document.createElement("div");
+          t.className = "toast error";
+          t.textContent = "App load failed. Check js/main.js or imports.";
+          toastBox.appendChild(t);
+        }
+      });
+  </script>
 </body>
 </html>
