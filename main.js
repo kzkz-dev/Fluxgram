@@ -19,20 +19,35 @@ window.FluxgramV41 = {
   calls: CallsModule,
   ui: UI,
   utils: Utils,
-  showMsgMenu: ChatModule.showMsgMenu
+  showMsgMenu: (msgId) => ChatModule.showMsgMenu(msgId)
 };
+
+function hideSplashNow() {
+  const splash = document.getElementById("splash-screen");
+  if (!splash) return;
+  splash.style.opacity = "0";
+  setTimeout(() => {
+    splash.style.visibility = "hidden";
+  }, 450);
+}
 
 function updatePresence(isOnline) {
   if (auth.currentUser) {
-    setDoc(doc(db, "users", auth.currentUser.uid), {
-      isOnline,
-      lastSeen: serverTimestamp()
-    }, { merge: true }).catch(() => {});
+    setDoc(
+      doc(db, "users", auth.currentUser.uid),
+      {
+        isOnline,
+        lastSeen: serverTimestamp()
+      },
+      { merge: true }
+    ).catch(() => {});
   }
 }
 
 window.addEventListener("beforeunload", () => updatePresence(false));
-document.addEventListener("visibilitychange", () => updatePresence(document.visibilityState === "visible"));
+document.addEventListener("visibilitychange", () => {
+  updatePresence(document.visibilityState === "visible");
+});
 
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("btn-reply-msg")?.addEventListener("click", () => ChatModule.initReply());
@@ -40,36 +55,50 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("btn-delete-me")?.addEventListener("click", () => ChatModule.executeDelete("me"));
 });
 
-onAuthStateChanged(auth, (user) => {
-  const path = window.location.pathname.toLowerCase();
+try {
+  onAuthStateChanged(auth, (user) => {
+    try {
+      const path = window.location.pathname.toLowerCase();
 
-  if (user) {
-    State.currentUser = user;
-    onSnapshot(doc(db, "users", user.uid), (d) => {
-      if (d.exists()) State.userData = d.data();
-    });
+      if (user) {
+        State.currentUser = user;
 
-    updatePresence(true);
+        onSnapshot(doc(db, "users", user.uid), (d) => {
+          if (d.exists()) State.userData = d.data();
+        });
 
-    if (path.includes("index") || path === "/" || path.endsWith("/")) {
-      window.location.replace("dashboard.html");
-      return;
+        updatePresence(true);
+
+        if (path.includes("index") || path === "/" || path.endsWith("/")) {
+          window.location.replace("dashboard.html");
+          return;
+        }
+
+        if (path.includes("dashboard")) {
+          DashboardModule.loadChats();
+        }
+
+        if (path.includes("chat")) {
+          ChatModule.init();
+        }
+      } else {
+        State.currentUser = null;
+
+        if (path.includes("dashboard") || path.includes("chat")) {
+          window.location.replace("index.html");
+          return;
+        }
+      }
+    } catch (err) {
+      console.error("onAuthStateChanged inner error:", err);
+      UI.toast("Runtime error in app state.", "error");
+    } finally {
+      hideSplashNow();
+      UI.loader(false);
     }
-
-    if (path.includes("dashboard")) DashboardModule.loadChats();
-    if (path.includes("chat")) ChatModule.init();
-  } else {
-    State.currentUser = null;
-    if (path.includes("dashboard") || path.includes("chat")) {
-      window.location.replace("index.html");
-    }
-  }
-
-  const splash = document.getElementById("splash-screen");
-  if (splash) {
-    splash.style.opacity = "0";
-    setTimeout(() => { splash.style.visibility = "hidden"; }, 450);
-  }
-
+  });
+} catch (err) {
+  console.error("main bootstrap failed:", err);
+  hideSplashNow();
   UI.loader(false);
-});
+}
