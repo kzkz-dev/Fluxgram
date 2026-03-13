@@ -5,9 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Fluxgram | Chat</title>
 
-  <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#111827">
-  <link rel="apple-touch-icon" href="logo.png">
   <link rel="stylesheet" href="style.css">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 </head>
@@ -43,7 +41,7 @@
             <div id="reply-preview-name" class="reply-preview-name">Name</div>
             <div id="reply-preview-text" class="reply-preview-text">Text</div>
           </div>
-          <button class="icon-btn" onclick="FluxgramV41.chat.cancelReply()">
+          <button class="icon-btn" onclick="window.FluxgramV41?.chat?.cancelReply()">
             <i class="fas fa-times"></i>
           </button>
         </div>
@@ -53,7 +51,7 @@
             <textarea id="msg-input" class="msg-input" rows="1" placeholder="Message"></textarea>
           </div>
 
-          <button class="icon-btn hidden" id="btn-send-text" onclick="FluxgramV41.chat.send()">
+          <button class="icon-btn hidden" id="btn-send-text" onclick="window.FluxgramV41?.chat?.send()">
             <i class="fas fa-paper-plane send-icon"></i>
           </button>
 
@@ -87,6 +85,6 @@
     </div>
   </div>
 
-  <script type="module" src="./js/main.js"></script>
+  <script type="module" src="./main.js"></script>
 </body>
 </html>
