@@ -29,11 +29,42 @@
         </div>
 
         <div class="chat-header-actions">
-          <button class="icon-btn"><i class="fas fa-link"></i></button>
+          <button class="icon-btn" id="btn-shared-media" onclick="window.FluxgramV41?.chat?.toggleSharedMedia()" title="Shared Media">
+            <i class="fas fa-images"></i>
+          </button>
+          <button class="icon-btn" id="btn-pin-chat" onclick="window.FluxgramV41?.chat?.togglePin()" title="Pin">
+            <i class="fas fa-thumbtack"></i>
+          </button>
+          <button class="icon-btn" id="btn-mute-chat" onclick="window.FluxgramV41?.chat?.toggleMute()" title="Mute">
+            <i class="fas fa-bell"></i>
+          </button>
+          <button class="icon-btn" id="btn-archive-chat" onclick="window.FluxgramV41?.chat?.toggleArchive()" title="Archive">
+            <i class="fas fa-box-archive"></i>
+          </button>
         </div>
       </div>
 
       <div class="chat-bg mobile-chat-bg">
+        <div id="shared-media-panel" class="shared-media-panel hidden">
+          <div class="shared-media-header">
+            <div class="shared-media-title">Shared Media</div>
+            <button class="icon-btn" onclick="window.FluxgramV41?.chat?.toggleSharedMedia()">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div id="shared-media-list" class="shared-media-list"></div>
+        </div>
+
+        <div id="edit-preview-bar" class="reply-preview-bar hidden">
+          <div style="flex:1; overflow:hidden;">
+            <div class="reply-preview-name">Editing message</div>
+            <div id="edit-preview-text" class="reply-preview-text">Text</div>
+          </div>
+          <button class="icon-btn" onclick="window.FluxgramV41?.chat?.cancelEdit()">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+
         <div class="messages-container" id="messages-container"></div>
 
         <div id="reply-preview-bar" class="reply-preview-bar hidden">
@@ -67,8 +98,24 @@
     <div class="action-sheet">
       <h3 class="action-sheet-title">Message Options</h3>
 
+      <div class="reaction-row">
+        <button class="reaction-picker-btn" onclick="window.FluxgramV41?.chat?.toggleReaction('🔥')">🔥</button>
+        <button class="reaction-picker-btn" onclick="window.FluxgramV41?.chat?.toggleReaction('❤️')">❤️</button>
+        <button class="reaction-picker-btn" onclick="window.FluxgramV41?.chat?.toggleReaction('😂')">😂</button>
+        <button class="reaction-picker-btn" onclick="window.FluxgramV41?.chat?.toggleReaction('👍')">👍</button>
+        <button class="reaction-picker-btn" onclick="window.FluxgramV41?.chat?.toggleReaction('😭')">😭</button>
+      </div>
+
       <button id="btn-reply-msg" class="sheet-btn accent-btn">
         <i class="fas fa-reply"></i> Reply
+      </button>
+
+      <button id="btn-edit-msg" class="sheet-btn">
+        <i class="fas fa-pen"></i> Edit
+      </button>
+
+      <button id="btn-forward-msg" class="sheet-btn">
+        <i class="fas fa-share"></i> Forward
       </button>
 
       <button id="btn-delete-everyone" class="sheet-btn danger-btn">
