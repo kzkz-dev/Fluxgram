@@ -54,7 +54,7 @@
   <script type="module">
     const errorBox = document.getElementById("app-error");
 
-    import("./js/main.js").catch((err) => {
+    import("./main.js").catch((err) => {
       console.error("main.js failed:", err);
       errorBox.classList.remove("hidden");
       errorBox.textContent = "App failed to load: " + (err?.message || err);
