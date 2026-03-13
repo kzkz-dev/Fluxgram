@@ -22,25 +22,12 @@ window.FluxgramV41 = {
   showMsgMenu: (msgId) => ChatModule.showMsgMenu(msgId)
 };
 
-function hideSplashNow() {
-  const splash = document.getElementById("splash-screen");
-  if (!splash) return;
-  splash.style.opacity = "0";
-  setTimeout(() => {
-    splash.style.visibility = "hidden";
-  }, 450);
-}
-
 function updatePresence(isOnline) {
   if (auth.currentUser) {
-    setDoc(
-      doc(db, "users", auth.currentUser.uid),
-      {
-        isOnline,
-        lastSeen: serverTimestamp()
-      },
-      { merge: true }
-    ).catch(() => {});
+    setDoc(doc(db, "users", auth.currentUser.uid), {
+      isOnline,
+      lastSeen: serverTimestamp()
+    }, { merge: true }).catch(() => {});
   }
 }
 
@@ -93,12 +80,10 @@ try {
       console.error("onAuthStateChanged inner error:", err);
       UI.toast("Runtime error in app state.", "error");
     } finally {
-      hideSplashNow();
       UI.loader(false);
     }
   });
 } catch (err) {
   console.error("main bootstrap failed:", err);
-  hideSplashNow();
   UI.loader(false);
 }
