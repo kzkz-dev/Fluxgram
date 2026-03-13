@@ -39,13 +39,20 @@ export const ChatModule = {
           State.activeChatData = snap.data();
           const title = State.activeChatData.title || State.activeChatData.name || "Chat";
           Utils.setText("chat-name", title);
-          Utils.setText("chat-status", State.activeChatData.type === "channel" ? "Channel" : "Conversation");
-          document.getElementById("chat-avatar").innerHTML = Utils.renderAvatarHTML(State.activeChatData.photoURL, title);
+          Utils.setText(
+            "chat-status",
+            State.activeChatData.type === "channel" ? "Channel" : "Conversation"
+          );
+          const avatar = document.getElementById("chat-avatar");
+          if (avatar) {
+            avatar.innerHTML = Utils.renderAvatarHTML(State.activeChatData.photoURL, title);
+          }
         });
       } else {
-        const directId = State.currentUser.uid < otherUid
-          ? `${State.currentUser.uid}_${otherUid}`
-          : `${otherUid}_${State.currentUser.uid}`;
+        const directId =
+          State.currentUser.uid < otherUid
+            ? `${State.currentUser.uid}_${otherUid}`
+            : `${otherUid}_${State.currentUser.uid}`;
 
         State.activeChatId = directId;
         const ref = doc(db, "chats", directId);
@@ -67,12 +74,18 @@ export const ChatModule = {
         State.unsubscribers.activeUser = onSnapshot(doc(db, "users", otherUid), (userSnap) => {
           if (!userSnap.exists()) return;
           State.activeChatUser = userSnap.data();
-          Utils.setText("chat-name", State.activeChatUser.username || State.activeChatUser.name || "User");
-          Utils.setText("chat-status", Utils.formatLastSeen(State.activeChatUser));
-          document.getElementById("chat-avatar").innerHTML = Utils.renderAvatarHTML(
-            State.activeChatUser.photoURL,
-            State.activeChatUser.username || State.activeChatUser.name || "U"
+          Utils.setText(
+            "chat-name",
+            State.activeChatUser.username || State.activeChatUser.name || "User"
           );
+          Utils.setText("chat-status", Utils.formatLastSeen(State.activeChatUser));
+          const avatar = document.getElementById("chat-avatar");
+          if (avatar) {
+            avatar.innerHTML = Utils.renderAvatarHTML(
+              State.activeChatUser.photoURL,
+              State.activeChatUser.username || State.activeChatUser.name || "U"
+            );
+          }
         });
       }
 
@@ -93,7 +106,8 @@ export const ChatModule = {
       }
 
       ChatModule.loadMessages();
-    } catch {
+    } catch (e) {
+      console.error("chat init error:", e);
       UI.toast("Failed to load chat", "error");
     }
   },
@@ -110,21 +124,23 @@ export const ChatModule = {
 
     try {
       await updateDoc(chatRef, { typingUsers: arrayUnion(State.currentUser.uid) });
-    } catch (e) {}
+    } catch {}
 
     clearTimeout(State.typingTimeout);
     State.typingTimeout = setTimeout(async () => {
       try {
         await updateDoc(chatRef, { typingUsers: arrayRemove(State.currentUser.uid) });
-      } catch (e) {}
+      } catch {}
     }, 1400);
   },
 
   async stopTypingNow() {
     if (!State.activeChatId || !State.currentUser?.uid) return;
     try {
-      await updateDoc(doc(db, "chats", State.activeChatId), { typingUsers: arrayRemove(State.currentUser.uid) });
-    } catch (e) {}
+      await updateDoc(doc(db, "chats", State.activeChatId), {
+        typingUsers: arrayRemove(State.currentUser.uid)
+      });
+    } catch {}
   },
 
   loadMessages() {
@@ -133,75 +149,94 @@ export const ChatModule = {
 
     const q = query(collection(db, `chats/${State.activeChatId}/messages`), orderBy("createdAt", "asc"));
 
-    State.unsubscribers.messages = onSnapshot(q, async (snapshot) => {
-      window._localMessages = {};
-      container.innerHTML = "";
-      let lastDateStr = "";
-      const batch = writeBatch(db);
-      let hasUnread = false;
+    State.unsubscribers.messages = onSnapshot(
+      q,
+      async (snapshot) => {
+        window._localMessages = {};
+        container.innerHTML = "";
+        let lastDateStr = "";
+        const batch = writeBatch(db);
+        let hasUnread = false;
 
-      for (const docSnap of snapshot.docs) {
-        const msgId = docSnap.id;
-        const msg = docSnap.data();
-        window._localMessages[msgId] = msg;
+        for (const docSnap of snapshot.docs) {
+          const msgId = docSnap.id;
+          const msg = docSnap.data();
+          window._localMessages[msgId] = msg;
 
-        if (msg.deletedFor && msg.deletedFor.includes(State.currentUser.uid)) continue;
+          if (msg.deletedFor && msg.deletedFor.includes(State.currentUser.uid)) continue;
 
-        if (msg.senderId !== State.currentUser.uid && msg.status !== "read") {
-          batch.update(docSnap.ref, { status: "read" });
-          hasUnread = true;
-        }
+          if (msg.senderId !== State.currentUser.uid && msg.status !== "read") {
+            batch.update(docSnap.ref, { status: "read" });
+            hasUnread = true;
+          }
 
-        const isMe = msg.senderId === State.currentUser.uid;
-        const dateStr = Utils.formatDate(msg.createdAt);
-        if (dateStr && dateStr !== lastDateStr) {
-          container.innerHTML += `<div class="date-divider"><span>${dateStr}</span></div>`;
-          lastDateStr = dateStr;
-        }
+          const isMe = msg.senderId === State.currentUser.uid;
+          const dateStr = Utils.formatDate(msg.createdAt);
 
-        let senderNameHTML = "";
-        if (!isMe && State.activeChatData && (State.activeChatData.type === "group" || State.activeChatData.type === "channel")) {
-          const sender = await Utils.getCachedUser(msg.senderId);
-          senderNameHTML = `<div class="msg-sender">${Utils.escapeHTML(sender?.username || sender?.name || "User")}</div>`;
-        }
+          if (dateStr && dateStr !== lastDateStr) {
+            container.innerHTML += `<div class="date-divider"><span>${dateStr}</span></div>`;
+            lastDateStr = dateStr;
+          }
 
-        let contentHTML = "";
-        if (msg.replyTo) {
-          contentHTML += `
-            <div class="replied-msg-box">
-              <div class="replied-name">${Utils.escapeHTML(msg.replyTo.senderName || "User")}</div>
-              <div class="replied-text">${Utils.escapeHTML(msg.replyTo.textPreview || "")}</div>
+          let senderNameHTML = "";
+          if (
+            !isMe &&
+            State.activeChatData &&
+            (State.activeChatData.type === "group" || State.activeChatData.type === "channel")
+          ) {
+            const sender = await Utils.getCachedUser(msg.senderId);
+            senderNameHTML = `<div class="msg-sender">${Utils.escapeHTML(
+              sender?.username || sender?.name || "User"
+            )}</div>`;
+          }
+
+          let contentHTML = "";
+
+          if (msg.replyTo) {
+            contentHTML += `
+              <div class="replied-msg-box">
+                <div class="replied-name">${Utils.escapeHTML(msg.replyTo.senderName || "User")}</div>
+                <div class="replied-text">${Utils.escapeHTML(msg.replyTo.textPreview || "")}</div>
+              </div>`;
+          }
+
+          if (msg.text) contentHTML += Utils.parseMentionsSafe(msg.text);
+
+          if (msg.media?.downloadURL && msg.type === "image") {
+            contentHTML += `<img src="${msg.media.downloadURL}" class="chat-img">`;
+          }
+
+          if (msg.media?.downloadURL && msg.type === "voice") {
+            contentHTML += `<audio src="${msg.media.downloadURL}" controls class="chat-audio"></audio>`;
+          }
+
+          const tickHTML = isMe
+            ? msg.status === "read"
+              ? `<span class="msg-ticks read"><i class="fas fa-check-double"></i></span>`
+              : `<span class="msg-ticks"><i class="fas fa-check"></i></span>`
+            : "";
+
+          container.innerHTML += `
+            <div class="msg-row ${isMe ? "msg-tx" : "msg-rx"}">
+              <div class="msg-bubble" onclick="window.FluxgramV41.showMsgMenu('${msgId}')">
+                ${senderNameHTML}
+                ${contentHTML}
+                <div class="msg-meta">${Utils.formatTime(msg.createdAt)}${tickHTML}</div>
+              </div>
             </div>`;
         }
 
-        if (msg.text) contentHTML += Utils.parseMentionsSafe(msg.text);
-        if (msg.media?.downloadURL && msg.type === "image") {
-          contentHTML += `<img src="${msg.media.downloadURL}" class="chat-img">`;
-        }
-        if (msg.media?.downloadURL && msg.type === "voice") {
-          contentHTML += `<audio src="${msg.media.downloadURL}" controls class="chat-audio"></audio>`;
-        }
-
-        const tickHTML = isMe
-          ? (msg.status === "read"
-            ? `<span class="msg-ticks read"><i class="fas fa-check-double"></i></span>`
-            : `<span class="msg-ticks"><i class="fas fa-check"></i></span>`)
-          : "";
-
-        container.innerHTML += `
-          <div class="msg-row ${isMe ? "msg-tx" : "msg-rx"}">
-            <div class="msg-bubble" onclick="window.FluxgramV41.showMsgMenu('${msgId}')">
-              ${senderNameHTML}
-              ${contentHTML}
-              <div class="msg-meta">${Utils.formatTime(msg.createdAt)}${tickHTML}</div>
-            </div>
-          </div>`;
+        if (hasUnread) batch.commit().catch(() => {});
+        Utils.bindMentionClicks(ChatModule.openByUsername);
+        requestAnimationFrame(() => {
+          container.scrollTop = container.scrollHeight;
+        });
+      },
+      (error) => {
+        console.error("loadMessages error:", error);
+        container.innerHTML = `<div style="padding:20px;text-align:center;color:var(--danger);">Failed to load messages</div>`;
       }
-
-      if (hasUnread) batch.commit().catch(() => {});
-      Utils.bindMentionClicks(ChatModule.openByUsername);
-      requestAnimationFrame(() => { container.scrollTop = container.scrollHeight; });
-    });
+    );
   },
 
   showMsgMenu(msgId) {
@@ -217,8 +252,11 @@ export const ChatModule = {
     State.replyingTo = {
       messageId: msgId,
       senderId: msg.senderId,
-      senderName: msg.senderId === State.currentUser.uid ? "You" : (State.activeChatUser?.username || "User"),
-      textPreview: msg.text || (msg.type === "image" ? "📸 Image" : msg.type === "voice" ? "🎤 Voice" : "Message")
+      senderName:
+        msg.senderId === State.currentUser.uid ? "You" : State.activeChatUser?.username || "User",
+      textPreview:
+        msg.text ||
+        (msg.type === "image" ? "📸 Image" : msg.type === "voice" ? "🎤 Voice" : "Message")
     };
 
     document.getElementById("reply-preview-name").innerText = State.replyingTo.senderName;
@@ -287,7 +325,8 @@ export const ChatModule = {
           timestamp: serverTimestamp()
         }
       });
-    } catch {
+    } catch (e) {
+      console.error("send message error:", e);
       UI.toast("Failed to send", "error");
     }
   },
@@ -316,7 +355,8 @@ export const ChatModule = {
       }
 
       UI.toast("Username not found!", "error");
-    } catch {
+    } catch (e) {
+      console.error("openByUsername error:", e);
       UI.toast("Search failed", "error");
     }
 
