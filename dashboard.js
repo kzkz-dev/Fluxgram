@@ -66,7 +66,8 @@ export const DashboardModule = {
       if (resBox.innerHTML === "") {
         resBox.innerHTML = `<div style="padding:15px;text-align:center;color:var(--text-muted);">No matches found</div>`;
       }
-    } catch {
+    } catch (e) {
+      console.error("search error:", e);
       resBox.innerHTML = `<div style="padding:15px;text-align:center;color:var(--danger);">Search failed</div>`;
     }
   },
@@ -110,6 +111,7 @@ export const DashboardModule = {
 
       window.location.href = `chat.html?chatId=${ref.id}`;
     } catch (e) {
+      console.error("createChat error:", e);
       UI.toast(e.message || "Failed to create", "error");
     } finally {
       UI.loader(false);
@@ -118,11 +120,11 @@ export const DashboardModule = {
 
   loadChats() {
     const list = document.getElementById("chat-list");
-    if (!list) return;
+    if (!list || !State.currentUser?.uid) return;
 
     const q = query(collection(db, "chats"), where("ownerId", "==", State.currentUser.uid));
 
-    State.unsubscribers.chats = onSnapshot(q, async (snapshot) => {
+    State.unsubscribers.chats = onSnapshot(q, (snapshot) => {
       State.isInitialLoad = false;
       list.innerHTML = "";
 
@@ -154,6 +156,9 @@ export const DashboardModule = {
             </div>
           </div>`;
       }
+    }, (error) => {
+      console.error("loadChats error:", error);
+      list.innerHTML = `<div style="padding:30px;text-align:center;color:var(--danger);">Failed to load chats</div>`;
     });
   }
 };
