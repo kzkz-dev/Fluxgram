@@ -38,6 +38,8 @@ document.addEventListener("visibilitychange", () => {
 
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("btn-reply-msg")?.addEventListener("click", () => ChatModule.initReply());
+  document.getElementById("btn-edit-msg")?.addEventListener("click", () => ChatModule.initEdit());
+  document.getElementById("btn-forward-msg")?.addEventListener("click", () => ChatModule.forwardMessage());
   document.getElementById("btn-delete-everyone")?.addEventListener("click", () => ChatModule.executeDelete("everyone"));
   document.getElementById("btn-delete-me")?.addEventListener("click", () => ChatModule.executeDelete("me"));
 });
